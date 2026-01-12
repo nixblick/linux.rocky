@@ -12,3 +12,43 @@
 
 pkg/
 src/
+
+# Ansible
+*.retry
+ansible.log
+
+# Audit Reports
+security_audit_report_*.txt
+
+# Backups
+*.bak
+*.backup
+*~
+
+# Python
+__pycache__/
+*.py[cod]
+.Python
+
+# Virtual Environments
+venv/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Custom vars (sensitive data)
+custom_vars.yml
+secrets.yml
+vault_pass.txt
+
+# Collections (if locally installed)
+collections/
+
+# Testing
+.molecule/
+.cache/

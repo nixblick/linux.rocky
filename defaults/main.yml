@@ -1,0 +1,128 @@
+---
+# Rocky Linux Security Hardening Role - Default Variables
+
+# Target host (default: localhost)
+target_host: localhost
+
+# Global switches - Enable/Disable entire modules
+enable_selinux_hardening: true
+enable_firewall_hardening: true
+enable_umask_hardening: true
+enable_mounts_hardening: true
+enable_dnf_hardening: true
+
+enable_selinux_audit: true
+enable_firewall_audit: true
+enable_umask_audit: true
+enable_mounts_audit: true
+enable_dnf_audit: true
+
+# ==============================
+# SELinux Configuration
+# ==============================
+selinux_state: enforcing
+selinux_policy: targeted
+
+# SELinux file contexts to set
+selinux_file_contexts:
+  - { target: '/var/www/html(/.*)?', setype: 'httpd_sys_content_t' }
+  - { target: '/var/log/myapp(/.*)?', setype: 'var_log_t' }
+
+# SELinux booleans to configure
+selinux_booleans:
+  - { name: 'httpd_can_network_connect', state: 'off', persistent: true }
+  - { name: 'httpd_enable_cgi', state: 'off', persistent: true }
+
+# SELinux ports to configure
+selinux_ports:
+  - { ports: '8443', proto: 'tcp', setype: 'http_port_t', state: 'present' }
+
+# ==============================
+# Firewall Configuration
+# ==============================
+firewall_default_zone: public
+
+# Services to allow
+firewall_allowed_services:
+  - ssh
+  - https
+
+# Ports to allow (format: port/protocol)
+firewall_allowed_ports:
+  - 22/tcp
+  - 443/tcp
+
+# Ports to block explicitly
+firewall_blocked_ports: []
+
+# Rich rules
+firewall_rich_rules:
+  - 'rule family="ipv4" source address="192.168.1.0/24" port port="22" protocol="tcp" accept'
+
+# ==============================
+# Umask Configuration
+# ==============================
+# Default umask for users
+default_umask: "0027"
+
+# Umask for root
+root_umask: "0022"
+
+# Files to configure umask
+umask_config_files:
+  - /etc/profile
+  - /etc/bashrc
+
+# ==============================
+# Mounts and Filesystem Configuration
+# ==============================
+# Required mount options for specific filesystems
+secure_mount_options:
+  - { path: '/tmp', options: 'nodev,nosuid,noexec', fstype: 'tmpfs' }
+  - { path: '/var/tmp', options: 'nodev,nosuid,noexec', fstype: 'none', src: '/tmp' }
+  - { path: '/home', options: 'nodev', fstype: 'xfs' }
+
+# Minimum free space percentage per filesystem
+filesystem_min_free_percent:
+  '/': 10
+  '/var': 15
+  '/home': 10
+
+# ==============================
+# DNF/Package Management Configuration
+# ==============================
+# Enable automatic security updates
+dnf_automatic_enabled: true
+dnf_automatic_apply_updates: true
+dnf_automatic_download_updates: true
+
+# DNF configuration
+dnf_config:
+  gpgcheck: 1
+  localpkg_gpgcheck: 1
+  clean_requirements_on_remove: 1
+  best: 1
+  skip_if_unavailable: 0
+
+# Packages to ensure are installed
+required_security_packages:
+  - aide
+  - audit
+  - rsyslog
+  - firewalld
+
+# Packages to ensure are removed
+prohibited_packages:
+  - telnet
+  - rsh
+  - ypbind
+
+# ==============================
+# Audit Report Configuration
+# ==============================
+# Where to save audit reports
+audit_report_path: "/tmp/security_audit_report_{{ ansible_date_time.epoch }}.txt"
+audit_report_format: "txt"  # txt or json
+
+# Fail on audit violations
+audit_fail_on_violations: false

@@ -1,0 +1,105 @@
+---
+# Mounts and Filesystem Audit Tasks
+
+- name: Audit Mounts | Get current mount information
+  set_fact:
+    current_mounts: "{{ ansible_mounts }}"
+
+- name: Audit Mounts | Check secure mount options
+  shell: "mount | grep ' {{ item.path }} '"
+  loop: "{{ secure_mount_options }}"
+  register: mount_options_check
+  changed_when: false
+  failed_when: false
+  when: secure_mount_options is defined
+
+- name: Audit Mounts | Verify mount options
+  set_fact:
+    audit_results: "{{ audit_results + ['[Mounts] ' + item.item.path + ' options: ' + status] }}"
+    audit_violations: "{{ audit_violations + violation }}"
+  loop: "{{ mount_options_check.results }}"
+  vars:
+    options_list: "{{ item.item.options.split(',') }}"
+    missing_options: "{{ options_list | reject('in', item.stdout) | list }}"
+    status: "{{ 'PASS' if missing_options | length == 0 else 'FAIL - Missing: ' + missing_options | join(',') }}"
+    violation: "{{ ['Mounts: ' + item.item.path + ' missing options: ' + missing_options | join(',')] if missing_options | length > 0 else [] }}"
+  when:
+    - secure_mount_options is defined
+    - mount_options_check.results is defined
+    - item.rc == 0
+
+- name: Audit Mounts | Check /tmp mount options
+  shell: "mount | grep ' /tmp '"
+  register: tmp_mount_check
+  changed_when: false
+  failed_when: false
+
+- name: Audit Mounts | Verify /tmp has secure options
+  set_fact:
+    audit_results: "{{ audit_results + ['[Mounts] /tmp secure options: ' + status] }}"
+    audit_violations: "{{ audit_violations + violation }}"
+  vars:
+    required_opts: ['nodev', 'nosuid', 'noexec']
+    missing_opts: "{{ required_opts | reject('in', tmp_mount_check.stdout) | list }}"
+    status: "{{ 'PASS' if missing_opts | length == 0 else 'FAIL - Missing: ' + missing_opts | join(',') }}"
+    violation: "{{ ['Mounts: /tmp missing secure options: ' + missing_opts | join(',')] if missing_opts | length > 0 else [] }}"
+  when: tmp_mount_check.rc == 0
+
+- name: Audit Mounts | Check filesystem space
+  set_fact:
+    filesystem_checks: []
+
+- name: Audit Mounts | Verify minimum free space
+  set_fact:
+    filesystem_checks: "{{ filesystem_checks + [check_result] }}"
+    audit_results: "{{ audit_results + ['[Filesystem] ' + item.mount + ' free space: ' + status] }}"
+    audit_violations: "{{ audit_violations + violation }}"
+  loop: "{{ ansible_mounts }}"
+  vars:
+    free_percent: "{{ ((item.size_available | float / item.size_total | float) * 100) | round(2) }}"
+    min_required: "{{ filesystem_min_free_percent[item.mount] | default(0) }}"
+    is_compliant: "{{ free_percent | float >= min_required | float }}"
+    status: "{{ 'PASS - ' + free_percent | string + '% free (min: ' + min_required | string + '%)' if is_compliant else 'FAIL - ' + free_percent | string + '% free (min: ' + min_required | string + '% required)' }}"
+    violation: "{{ ['Filesystem: ' + item.mount + ' has only ' + free_percent | string + '% free space (minimum ' + min_required | string + '% required)'] if not is_compliant else [] }}"
+    check_result: {
+      'mount': "{{ item.mount }}",
+      'free_percent': "{{ free_percent }}",
+      'compliant': "{{ is_compliant }}"
+    }
+  when:
+    - filesystem_min_free_percent is defined
+    - item.mount in filesystem_min_free_percent
+
+- name: Audit Mounts | Check /var/tmp link or mount
+  stat:
+    path: /var/tmp
+  register: var_tmp_stat
+
+- name: Audit Mounts | Verify /var/tmp configuration
+  set_fact:
+    audit_results: "{{ audit_results + ['[Mounts] /var/tmp: ' + status] }}"
+    audit_violations: "{{ audit_violations + violation }}"
+  vars:
+    is_link: "{{ var_tmp_stat.stat.islnk | default(false) }}"
+    status: "{{ 'PASS - symlink to /tmp' if is_link else 'WARNING - Not linked to /tmp' }}"
+    violation: "{{ [] if is_link else ['Mounts: /var/tmp is not a symlink to /tmp'] }}"
+
+- name: Audit Mounts | Check /home mount options
+  shell: "mount | grep ' /home '"
+  register: home_mount_check
+  changed_when: false
+  failed_when: false
+
+- name: Audit Mounts | Verify /home has nodev option
+  set_fact:
+    audit_results: "{{ audit_results + ['[Mounts] /home nodev option: ' + status] }}"
+    audit_violations: "{{ audit_violations + violation }}"
+  vars:
+    has_nodev: "{{ 'nodev' in home_mount_check.stdout }}"
+    status: "{{ 'PASS' if has_nodev else 'FAIL' }}"
+    violation: "{{ [] if has_nodev else ['Mounts: /home does not have nodev option'] }}"
+  when: home_mount_check.rc == 0
+
+- name: Audit Mounts | Display audit results
+  debug:
+    msg: "Mounts audit completed - {{ audit_results | select('search', 'Mounts|Filesystem') | list | length }} checks performed"

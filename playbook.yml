@@ -1,0 +1,50 @@
+---
+# Rocky Linux Security Hardening Playbook
+#
+# Dieses Playbook wendet Security Hardening auf Rocky Linux Systeme an
+# und führt anschließend ein Audit zur Überprüfung der Compliance durch.
+#
+# Verwendung:
+#   ansible-playbook playbook.yml                    # Alles ausführen
+#   ansible-playbook playbook.yml --tags hardening   # Nur Härtung
+#   ansible-playbook playbook.yml --tags audit       # Nur Audit
+#   ansible-playbook playbook.yml --tags selinux     # Nur SELinux
+#
+# Weitere Beispiele siehe README.md
+
+- name: Rocky Linux Security Hardening and Audit
+  hosts: localhost
+  become: true
+
+  # Optional: Eigene Variablen hier überschreiben
+  vars:
+    # Beispiel für Custom-Konfiguration
+    # selinux_state: permissive
+    # default_umask: "0027"
+    # enable_dnf_hardening: false
+
+  # Rolle einbinden
+  roles:
+    - role: .
+      tags:
+        - always
+
+  # Post-Tasks (optional)
+  post_tasks:
+    - name: Display completion message
+      debug:
+        msg: |
+          ================================================================================
+          Rocky Linux Security Hardening abgeschlossen!
+
+          {% if 'audit' in ansible_run_tags %}
+          Audit-Report verfügbar unter: {{ audit_report_path | default('/tmp/security_audit_report_*.txt') }}
+          {% endif %}
+
+          Nächste Schritte:
+          - Überprüfe die Logs auf Fehler oder Warnungen
+          - Teste alle kritischen Anwendungen
+          - Bei SELinux-Änderungen ggf. System neu starten
+          ================================================================================
+      tags:
+        - always

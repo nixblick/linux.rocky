@@ -1,0 +1,7 @@
+---
+# Ansible Galaxy Requirements
+# Installation: ansible-galaxy collection install -r requirements.yml
+
+collections:
+  - name: community.general
+    version: ">=3.0.0"

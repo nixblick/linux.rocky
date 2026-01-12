@@ -1,0 +1,146 @@
+---
+# SELinux Audit Tasks
+
+- name: Audit SELinux | Get current SELinux status
+  command: getenforce
+  register: current_selinux_state
+  changed_when: false
+  failed_when: false
+
+- name: Audit SELinux | Check SELinux state
+  set_fact:
+    selinux_state_compliant: "{{ current_selinux_status.stdout | default('') | lower == selinux_state | lower }}"
+  vars:
+    current_selinux_status: "{{ ansible_selinux.status | default('disabled') }}"
+  when: ansible_selinux is defined
+
+- name: Audit SELinux | Get current SELinux status
+  command: getenforce
+  register: current_selinux_mode
+  changed_when: false
+  failed_when: false
+
+- name: Audit SELinux | Check SELinux state
+  set_fact:
+    selinux_audit_state: "{{ 'PASS' if current_selinux_mode == selinux_state else 'FAIL' }}"
+    current_selinux_state: "{{ ansible_selinux.status | default('disabled') }}"
+  vars:
+    expected_state: "{{ selinux_state }}"
+
+- name: Audit SELinux | Check SELinux status
+  command: getenforce
+  register: selinux_status
+  changed_when: false
+  failed_when: false
+
+- name: Audit SELinux | Verify SELinux state
+  set_fact:
+    audit_results: "{{ audit_results + ['[SELinux] State check: ' + (selinux_status | upper)] }}"
+    audit_violations: "{{ audit_violations + ['SELinux is not in ' + selinux_state + ' mode'] if selinux_status.stdout | lower != selinux_state else audit_violations }}"
+  vars:
+    selinux_status_result: "{{ 'PASS' if ansible_selinux.status == selinux_state else 'FAIL' }}"
+  when: ansible_selinux is defined
+
+- name: Audit SELinux | Check SELinux status
+  command: getenforce
+  register: current_selinux_status
+  changed_when: false
+  failed_when: false
+
+- name: Audit SELinux | Verify SELinux state
+  set_fact:
+    audit_results: "{{ audit_results + ['SELinux State: Expected=' + selinux_state + ', Current=' + current_selinux_status + ' - ' + status] }}"
+    audit_violations: "{{ audit_violations + ['SELinux state mismatch: Expected ' + selinux_state + ', Found ' + current_selinux_state] if current_selinux_state != selinux_state else audit_violations }}"
+  vars:
+    selinux_current_state: "{{ ansible_selinux.status | default('disabled') }}"
+    check_passed: "{{ selinux_state == (ansible_selinux.status | default('disabled')) }}"
+    status_msg: "{{ '✓ PASS' if (ansible_selinux.status | default('disabled')) == selinux_state else '✗ FAIL' }}"
+  when: ansible_selinux is defined
+
+- name: SELinux Audit | Record results
+  set_fact:
+    audit_results: "{{ audit_results + ['[SELinux] State Check: ' + (selinux_state_status if ansible_selinux.status == selinux_state else 'FAILED - Expected: ' + selinux_state + ', Found: ' + ansible_selinux.status)] }}"
+    audit_violations: "{{ audit_violations + ['SELinux state mismatch: Expected ' + selinux_state + ', Found: ' + ansible_selinux.status] if ansible_selinux.status != selinux_state else audit_violations }}"
+
+- name: SELinux Audit | Verify SELinux policy
+  block:
+    - name: Get current SELinux policy
+      command: sestatus
+      register: selinux_status
+      changed_when: false
+
+    - name: Check if configured policy is active
+      set_fact:
+        selinux_policy_compliant: "{{ 'Policy from config file: ' + selinux_policy in selinux_status.stdout }}"
+
+    - name: Add SELinux policy audit result
+      set_fact:
+        audit_results: "{{ audit_results + ['[SELinux] Policy: ' + (selinux_policy in selinux_status.stdout | ternary('PASS', 'FAIL'))] }}"
+
+- name: Audit SELinux | Check SELinux file contexts
+  block:
+    - name: Get current file contexts
+      command: "semanage fcontext -l"
+      register: current_fcontexts
+      changed_when: false
+      failed_when: false
+
+    - name: Audit file contexts
+      set_fact:
+        selinux_context_status: "{{ 'PASS' if item.target in current_fcontext_check.stdout else 'FAIL' }}"
+      loop: "{{ selinux_file_contexts }}"
+      when: selinux_file_contexts is defined
+      vars:
+        current_fcontext: "{{ lookup('pipe', 'semanage fcontext -l') }}"
+      register: selinux_context_audit
+
+- name: Audit SELinux | Check SELinux booleans
+  command: "getsebool {{ item.name }}"
+  loop: "{{ selinux_booleans }}"
+  register: selinux_booleans_check
+  changed_when: false
+  failed_when: false
+  when: selinux_booleans is defined
+
+- name: Audit SELinux | Verify booleans configuration
+  set_fact:
+    audit_results: "{{ audit_results + ['[SELinux Boolean] ' + item.item.name + ': ' + ('PASS' if item.stdout is search(item.item.state) else 'FAIL')] }}"
+    audit_violations: "{{ audit_violations + ['SELinux boolean ' + item.item.name + ' is not set to ' + item.item.state] if item.rc == 0 and item.item.state not in item.stdout else audit_violations }}"
+  loop: "{{ selinux_booleans_check.results }}"
+  when:
+    - selinux_booleans is defined
+    - selinux_booleans_check.results is defined
+
+- name: Audit SELinux | Check file contexts
+  shell: "ls -Z {{ item.target | regex_replace('\\(.*\\)', '') }} 2>/dev/null | head -5"
+  loop: "{{ selinux_file_contexts }}"
+  register: selinux_contexts_check
+  failed_when: false
+  changed_when: false
+  when: selinux_file_contexts is defined
+
+- name: Audit SELinux | Record file context results
+  set_fact:
+    audit_results: "{{ audit_results + ['[SELinux] File context for ' + item.item.target + ': ' + ('PASS' if item.rc == 0 else 'FAIL')] }}"
+    audit_violations: "{{ audit_violations + ['SELinux: File context not found for ' + item.item.target] if item.rc != 0 else audit_violations }}"
+  loop: "{{ selinux_fcontext_check.results }}"
+  when: selinux_file_contexts is defined
+
+- name: Audit SELinux | Check SELinux booleans
+  command: "getsebool {{ item.name }}"
+  loop: "{{ selinux_booleans }}"
+  when: selinux_booleans is defined
+  register: selinux_booleans_check
+  changed_when: false
+  failed_when: false
+
+- name: Audit SELinux | Verify boolean states
+  set_fact:
+    audit_results: "{{ audit_results + ['SELinux Boolean: ' ~ item.item.name ~ ' is ' ~ ('COMPLIANT' if item.item.state in item.stdout else 'NON-COMPLIANT')] }}"
+    audit_violations: "{{ audit_violations + ['SELinux Boolean: ' ~ item.item.name ~ ' should be ' ~ item.item.state] if item.item.state not in item.stdout else audit_violations }}"
+  loop: "{{ selinux_booleans_check.results }}"
+  when: selinux_booleans is defined
+
+- name: Audit SELinux | Display audit results
+  debug:
+    msg: "SELinux audit completed - {{ audit_results | select('search', 'SELinux') | list | length }} checks performed"

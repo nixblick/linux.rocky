@@ -1,0 +1,87 @@
+---
+# Mounts and Filesystem Hardening Tasks
+
+- name: Mounts | Get current mount information
+  set_fact:
+    current_mounts: "{{ ansible_mounts }}"
+
+- name: Mounts | Configure secure mount options in /etc/fstab
+  mount:
+    path: "{{ item.path }}"
+    src: "{{ item.src | default(omit) }}"
+    fstype: "{{ item.fstype }}"
+    opts: "{{ item.options }}"
+    state: present
+  loop: "{{ secure_mount_options }}"
+  when: secure_mount_options is defined
+  register: mount_changes
+
+- name: Mounts | Remount filesystems with new options
+  command: "mount -o remount {{ item.item.path }}"
+  loop: "{{ mount_changes.results }}"
+  when:
+    - mount_changes is defined
+    - item.changed
+  changed_when: true
+
+- name: Mounts | Ensure /tmp is mounted with secure options
+  block:
+    - name: Check if /tmp is a separate partition
+      shell: "mount | grep -E '^.* on /tmp '"
+      register: tmp_mount_check
+      failed_when: false
+      changed_when: false
+
+    - name: Create systemd tmp.mount if /tmp is not separate
+      copy:
+        content: |
+          [Unit]
+          Description=Temporary Directory
+          Documentation=man:hier(7)
+          DefaultDependencies=no
+          Conflicts=umount.target
+          Before=local-fs.target umount.target
+
+          [Mount]
+          What=tmpfs
+          Where=/tmp
+          Type=tmpfs
+          Options=mode=1777,strictatime,noexec,nodev,nosuid
+
+          [Install]
+          WantedBy=local-fs.target
+        dest: /etc/systemd/system/tmp.mount
+        mode: '0644'
+      when: tmp_mount_check.rc != 0
+      register: tmp_mount_unit
+
+    - name: Enable and start tmp.mount
+      systemd:
+        name: tmp.mount
+        enabled: true
+        state: started
+        daemon_reload: true
+      when: tmp_mount_unit is changed
+
+- name: Mounts | Check filesystem disk space
+  set_fact:
+    filesystem_space_violations: []
+
+- name: Mounts | Verify minimum free space requirements
+  set_fact:
+    filesystem_space_violations: "{{ filesystem_space_violations + [item.key] }}"
+  loop: "{{ ansible_mounts | selectattr('mount', 'in', filesystem_min_free_percent.keys()) | list }}"
+  when:
+    - filesystem_min_free_percent is defined
+    - item.mount in filesystem_min_free_percent
+    - ((item.size_available / item.size_total * 100) | int) < filesystem_min_free_percent[item.mount]
+
+- name: Mounts | Display filesystem space warnings
+  debug:
+    msg: "WARNING: Filesystem {{ item }} has less than {{ filesystem_min_free_percent[item] }}% free space"
+  loop: "{{ filesystem_space_violations }}"
+  when: filesystem_space_violations | length > 0
+
+- name: Mounts | Display configuration status
+  debug:
+    msg: "Mounts hardening completed - {{ secure_mount_options | length }} mount points configured"

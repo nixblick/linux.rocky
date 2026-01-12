@@ -1,0 +1,67 @@
+---
+# Umask Hardening Tasks
+
+- name: Umask | Configure default umask in /etc/profile
+  lineinfile:
+    path: /etc/profile
+    regexp: '^\s*umask\s+'
+    line: "umask {{ default_umask }}"
+    state: present
+    create: false
+    backup: true
+
+- name: Umask | Configure default umask in /etc/bashrc
+  lineinfile:
+    path: /etc/bashrc
+    regexp: '^\s*umask\s+'
+    line: "umask {{ default_umask }}"
+    state: present
+    create: false
+    backup: true
+
+- name: Umask | Configure umask in additional config files
+  lineinfile:
+    path: "{{ item }}"
+    regexp: '^\s*umask\s+'
+    line: "umask {{ default_umask }}"
+    state: present
+    create: false
+    backup: true
+  loop: "{{ umask_config_files }}"
+  when: umask_config_files is defined
+
+- name: Umask | Configure umask in /etc/login.defs
+  lineinfile:
+    path: /etc/login.defs
+    regexp: '^UMASK\s+'
+    line: "UMASK {{ default_umask }}"
+    state: present
+    backup: true
+
+- name: Umask | Configure root umask in /root/.bashrc
+  lineinfile:
+    path: /root/.bashrc
+    regexp: '^\s*umask\s+'
+    line: "umask {{ root_umask }}"
+    state: present
+    create: true
+    mode: '0600'
+    backup: true
+
+- name: Umask | Set umask for systemd services
+  lineinfile:
+    path: /etc/systemd/system.conf
+    regexp: '^#?UMask='
+    line: "UMask={{ default_umask }}"
+    state: present
+    backup: true
+  register: systemd_umask
+
+- name: Umask | Reload systemd if configuration changed
+  systemd:
+    daemon_reexec: true
+  when: systemd_umask.changed
+
+- name: Umask | Display configuration status
+  debug:
+    msg: "Umask hardening completed - Default: {{ default_umask }}, Root: {{ root_umask }}"

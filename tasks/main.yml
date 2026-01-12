@@ -1,0 +1,161 @@
+---
+# Main entry point for Rocky Linux Security Hardening Role
+
+- name: Initialize audit results variable
+  set_fact:
+    audit_results: []
+    audit_violations: []
+  tags:
+    - always
+
+- name: Display role execution mode
+  debug:
+    msg: "Rocky Linux Security Hardening Role - Starting execution"
+  tags:
+    - always
+
+# ==============================
+# HARDENING TASKS
+# ==============================
+
+- name: Include SELinux hardening tasks
+  include_tasks: selinux.yml
+  when: enable_selinux_hardening | bool
+  tags:
+    - hardening
+    - selinux
+
+- name: Include Firewall hardening tasks
+  include_tasks: firewall.yml
+  when: enable_firewall_hardening | bool
+  tags:
+    - hardening
+    - firewall
+
+- name: Include Umask hardening tasks
+  include_tasks: umask.yml
+  when: enable_umask_hardening | bool
+  tags:
+    - hardening
+    - umask
+
+- name: Include Mounts hardening tasks
+  include_tasks: mounts.yml
+  when: enable_mounts_hardening | bool
+  tags:
+    - hardening
+    - mounts
+
+- name: Include DNF hardening tasks
+  include_tasks: dnf.yml
+  when: enable_dnf_hardening | bool
+  tags:
+    - hardening
+    - dnf
+
+# ==============================
+# AUDIT TASKS
+# ==============================
+
+- name: Include SELinux audit tasks
+  include_tasks: audit_selinux.yml
+  when: enable_selinux_audit | bool
+  tags:
+    - audit
+    - audit_selinux
+
+- name: Include Firewall audit tasks
+  include_tasks: audit_firewall.yml
+  when: enable_firewall_audit | bool
+  tags:
+    - audit
+    - audit_firewall
+
+- name: Include Umask audit tasks
+  include_tasks: audit_umask.yml
+  when: enable_umask_audit | bool
+  tags:
+    - audit
+    - audit_umask
+
+- name: Include Mounts audit tasks
+  include_tasks: audit_mounts.yml
+  when: enable_mounts_audit | bool
+  tags:
+    - audit
+    - audit_mounts
+
+- name: Include DNF audit tasks
+  include_tasks: audit_dnf.yml
+  when: enable_dnf_audit | bool
+  tags:
+    - audit
+    - audit_dnf
+
+# ==============================
+# AUDIT REPORT GENERATION
+# ==============================
+
+- name: Generate audit report
+  block:
+    - name: Create audit report
+      copy:
+        content: |
+          ================================================================================
+          ROCKY LINUX SECURITY AUDIT REPORT
+          ================================================================================
+          Generated: {{ ansible_date_time.iso8601 }}
+          Hostname: {{ ansible_hostname }}
+          IP Address: {{ ansible_default_ipv4.address | default('N/A') }}
+          ================================================================================
+
+          {% for result in audit_results %}
+          {{ result }}
+          {% endfor %}
+
+          ================================================================================
+          SUMMARY
+          ================================================================================
+          Total Checks: {{ audit_results | length }}
+          Violations: {{ audit_violations | length }}
+
+          {% if audit_violations | length > 0 %}
+          VIOLATIONS FOUND:
+          {% for violation in audit_violations %}
+          - {{ violation }}
+          {% endfor %}
+          {% else %}
+          ✓ All checks passed. System is compliant.
+          {% endif %}
+          ================================================================================
+        dest: "{{ audit_report_path }}"
+        mode: '0600'
+      delegate_to: localhost
+
+    - name: Display audit report location
+      debug:
+        msg: "Audit report generated at: {{ audit_report_path }}"
+
+    - name: Display audit summary
+      debug:
+        msg: |
+          Audit Summary:
+          - Total Checks: {{ audit_results | length }}
+          - Violations: {{ audit_violations | length }}
+          {% if audit_violations | length > 0 %}
+          - Status: FAILED
+          {% else %}
+          - Status: PASSED
+          {% endif %}
+
+    - name: Fail if violations found and audit_fail_on_violations is true
+      fail:
+        msg: "Security audit failed with {{ audit_violations | length }} violation(s)"
+      when:
+        - audit_fail_on_violations | bool
+        - audit_violations | length > 0
+
+  when: audit_results is defined
+  tags:
+    - audit
+    - report

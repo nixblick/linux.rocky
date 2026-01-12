@@ -1,0 +1,39 @@
+# Claude Code Configuration
+# This file helps Claude Code understand your project structure
+
+project:
+  name: "Rocky Linux Security Hardening Role"
+  type: "ansible"
+  description: "Ansible role for hardening and auditing Rocky Linux systems"
+
+structure:
+  roles_dir: "."
+  defaults: "defaults/main.yml"
+  tasks: "tasks/"
+
+conventions:
+  - "Each security domain has its own task file (e.g., selinux.yml, firewall.yml)"
+  - "Each task file has a corresponding audit file (e.g., audit_selinux.yml)"
+  - "All features are controllable via tags and boolean switches"
+  - "Configuration variables are defined in defaults/main.yml"
+  - "Audit results are collected and reported at the end"
+
+tags:
+  hardening:
+    - selinux
+    - firewall
+    - umask
+    - mounts
+    - dnf
+  audit:
+    - audit_selinux
+    - audit_firewall
+    - audit_umask
+    - audit_mounts
+    - audit_dnf
+
+commands:
+  full_hardening: "ansible-playbook playbook.yml --tags hardening"
+  full_audit: "ansible-playbook playbook.yml --tags audit"
+  specific_hardening: "ansible-playbook playbook.yml --tags selinux,firewall"
+  specific_audit: "ansible-playbook playbook.yml --tags audit_selinux,audit_firewall"

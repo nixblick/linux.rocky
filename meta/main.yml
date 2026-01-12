@@ -1,0 +1,31 @@
+---
+galaxy_info:
+  role_name: rocky_hardening
+  author: Claude Code
+  description: Umfassende Security Hardening und Audit Rolle für Rocky Linux
+  company:
+
+  license: MIT
+
+  min_ansible_version: "2.9"
+
+  platforms:
+    - name: EL
+      versions:
+        - 8
+        - 9
+
+  galaxy_tags:
+    - security
+    - hardening
+    - audit
+    - compliance
+    - rocky
+    - rhel
+    - selinux
+    - firewall
+
+dependencies: []
+
+collections:
+  - community.general

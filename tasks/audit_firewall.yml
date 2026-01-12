@@ -1,0 +1,84 @@
+---
+# Firewall Audit Tasks
+
+- name: Audit Firewall | Check if firewalld is installed
+  package_facts:
+    manager: auto
+
+- name: Audit Firewall | Verify firewalld installation
+  set_fact:
+    audit_results: "{{ audit_results + ['[Firewall] Installation: ' + ('PASS' if 'firewalld' in ansible_facts.packages else 'FAIL')] }}"
+    audit_violations: "{{ audit_violations + ['Firewall: firewalld is not installed'] if 'firewalld' not in ansible_facts.packages else audit_violations }}"
+
+- name: Audit Firewall | Check firewalld service status
+  systemd:
+    name: firewalld
+  register: firewalld_status
+  failed_when: false
+
+- name: Audit Firewall | Verify firewalld is running
+  set_fact:
+    audit_results: "{{ audit_results + ['[Firewall] Service Status: ' + ('PASS' if firewalld_status.status.ActiveState == 'active' else 'FAIL')] }}"
+    audit_violations: "{{ audit_violations + ['Firewall: firewalld service is not active'] if firewalld_status.status.ActiveState != 'active' else audit_violations }}"
+  when: firewalld_status.status is defined
+
+- name: Audit Firewall | Get default zone
+  command: firewall-cmd --get-default-zone
+  register: current_default_zone
+  changed_when: false
+  failed_when: false
+
+- name: Audit Firewall | Verify default zone
+  set_fact:
+    audit_results: "{{ audit_results + ['[Firewall] Default Zone: Expected=' + firewall_default_zone + ', Current=' + current_default_zone.stdout + ' - ' + ('PASS' if current_default_zone.stdout == firewall_default_zone else 'FAIL')] }}"
+    audit_violations: "{{ audit_violations + ['Firewall: Default zone mismatch - Expected ' + firewall_default_zone + ', Found ' + current_default_zone.stdout] if current_default_zone.stdout != firewall_default_zone else audit_violations }}"
+  when: current_default_zone.rc == 0
+
+- name: Audit Firewall | Check allowed services
+  command: "firewall-cmd --zone={{ firewall_default_zone }} --list-services"
+  register: current_services
+  changed_when: false
+  failed_when: false
+
+- name: Audit Firewall | Verify allowed services
+  set_fact:
+    audit_results: "{{ audit_results + ['[Firewall] Service ' + item + ': ' + ('PASS' if item in current_services.stdout else 'FAIL')] }}"
+    audit_violations: "{{ audit_violations + ['Firewall: Service ' + item + ' is not allowed in zone ' + firewall_default_zone] if item not in current_services.stdout else audit_violations }}"
+  loop: "{{ firewall_allowed_services }}"
+  when:
+    - firewall_allowed_services is defined
+    - current_services.rc == 0
+
+- name: Audit Firewall | Check allowed ports
+  command: "firewall-cmd --zone={{ firewall_default_zone }} --list-ports"
+  register: current_ports
+  changed_when: false
+  failed_when: false
+
+- name: Audit Firewall | Verify allowed ports
+  set_fact:
+    audit_results: "{{ audit_results + ['[Firewall] Port ' + item + ': ' + ('PASS' if item in current_ports.stdout else 'FAIL')] }}"
+    audit_violations: "{{ audit_violations + ['Firewall: Port ' + item + ' is not allowed in zone ' + firewall_default_zone] if item not in current_ports.stdout else audit_violations }}"
+  loop: "{{ firewall_allowed_ports }}"
+  when:
+    - firewall_allowed_ports is defined
+    - current_ports.rc == 0
+
+- name: Audit Firewall | Check rich rules
+  command: "firewall-cmd --zone={{ firewall_default_zone }} --list-rich-rules"
+  register: current_rich_rules
+  changed_when: false
+  failed_when: false
+
+- name: Audit Firewall | Verify rich rules
+  set_fact:
+    audit_results: "{{ audit_results + ['[Firewall] Rich Rule configured: ' + ('PASS' if item in current_rich_rules.stdout else 'FAIL')] }}"
+    audit_violations: "{{ audit_violations + ['Firewall: Rich rule missing - ' + item] if item not in current_rich_rules.stdout else audit_violations }}"
+  loop: "{{ firewall_rich_rules }}"
+  when:
+    - firewall_rich_rules is defined
+    - current_rich_rules.rc == 0
+
+- name: Audit Firewall | Display audit results
+  debug:
+    msg: "Firewall audit completed - {{ audit_results | select('search', 'Firewall') | list | length }} checks performed"
