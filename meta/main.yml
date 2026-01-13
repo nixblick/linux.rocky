@@ -1,7 +1,7 @@
 ---
 galaxy_info:
   role_name: rocky_hardening
-  author: Claude Code
+  author: Claude Code & nixblick
   description: Umfassende Security Hardening und Audit Rolle für Rocky Linux
   company:
 

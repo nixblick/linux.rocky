@@ -1,5 +1,5 @@
 # Claude Code Configuration
-# This file helps Claude Code understand your project structure
+# Rocky Linux Security Hardening Role
 
 project:
   name: "Rocky Linux Security Hardening Role"
@@ -10,6 +10,11 @@ structure:
   roles_dir: "."
   defaults: "defaults/main.yml"
   tasks: "tasks/"
+  handlers: "handlers/"
+  templates: "templates/"
+  files: "files/"
+  vars: "vars/"
+  meta: "meta/"
 
 conventions:
   - "Each security domain has its own task file (e.g., selinux.yml, firewall.yml)"
@@ -17,6 +22,9 @@ conventions:
   - "All features are controllable via tags and boolean switches"
   - "Configuration variables are defined in defaults/main.yml"
   - "Audit results are collected and reported at the end"
+  - "Task names start with the module name in brackets, e.g. [SELinux]"
+  - "Use ansible_facts where possible instead of deprecated variables"
+  - "All tasks must be idempotent"
 
 tags:
   hardening:
@@ -35,5 +43,85 @@ tags:
 commands:
   full_hardening: "ansible-playbook playbook.yml --tags hardening"
   full_audit: "ansible-playbook playbook.yml --tags audit"
-  specific_hardening: "ansible-playbook playbook.yml --tags selinux,firewall"
-  specific_audit: "ansible-playbook playbook.yml --tags audit_selinux,audit_firewall"
+  check_mode: "ansible-playbook playbook.yml --check --diff"
+  syntax_check: "ansible-playbook playbook.yml --syntax-check"
+  lint: "ansible-lint ."
+
+# Autonome Verwaltung - Claude darf diese Aktionen ohne Rückfrage durchführen
+permissions:
+  allow_without_confirmation:
+    - edit_tasks
+    - edit_defaults
+    - edit_handlers
+    - edit_templates
+    - edit_readme
+    - create_new_modules
+    - run_syntax_check
+    - run_lint
+  
+  require_confirmation:
+    - run_playbook_on_hosts
+    - delete_files
+    - modify_inventory
+
+# Regeln für neue Module
+module_template:
+  task_file_pattern: "tasks/{module_name}.yml"
+  audit_file_pattern: "tasks/audit_{module_name}.yml"
+  required_tags:
+    task: ["hardening", "{module_name}"]
+    audit: ["audit", "audit_{module_name}"]
+  required_variables:
+    - "enable_{module_name}_hardening"
+    - "enable_{module_name}_audit"
+
+# Code-Stil und Formatierung
+style:
+  yaml:
+    indent: 2
+    line_length: 120
+    quote_style: double
+  ansible:
+    fqcn: true  # Fully Qualified Collection Names verwenden
+    name_prefix: true  # Task-Namen mit Modulname prefixen
+    block_style: true  # Logische Gruppierung mit block/rescue/always
+
+# Validierung vor Commits
+validation:
+  pre_commit:
+    - "ansible-lint ."
+    - "ansible-playbook playbook.yml --syntax-check"
+    - "yamllint ."
+
+# Dokumentation
+documentation:
+  readme: "README.md"
+  update_readme_on:
+    - new_module
+    - new_variable
+    - tag_changes
+  sections:
+    - features
+    - configuration
+    - usage
+    - tags
+
+# Testing
+testing:
+  molecule:
+    driver: docker
+    platforms:
+      - rockylinux:8
+      - rockylinux:9
+  test_commands:
+    converge: "molecule converge"
+    verify: "molecule verify"
+    destroy: "molecule destroy"
+
+# Bekannte Abhängigkeiten
+dependencies:
+  collections:
+    - community.general
+  python:
+    - ansible-core>=2.9
+    - ansible-lint

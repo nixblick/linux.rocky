@@ -1,0 +1,460 @@
+// =============================================================================
+// .claude/settings.local.json
+// =============================================================================
+// Template für Ansible-Rollen mit Claude Code
+// 
+// Diese Datei steuert was Claude Code ohne Rückfrage ausführen darf.
+// Kopiere sie nach: <projekt>/.claude/settings.local.json
+//
+// SICHERHEITSHINWEIS:
+// - Diese Datei erlaubt Playbook-Ausführung auf localhost!
+// - Für Produktions-Hosts: deny-Regeln anpassen oder entfernen
+// - Prüfe alle Einstellungen vor Verwendung
+//
+// =============================================================================
+// WICHTIG: PFAD-BESCHRÄNKUNGEN
+// =============================================================================
+// Claude Code ist NICHT auf das Startverzeichnis beschränkt!
+// Die settings.local.json schränkt nur BEFEHLE ein, nicht PFADE.
+//
+// Beispiel - Claude kann das hier machen, auch wenn gestartet in ~/ansible-rolle/:
+//   cat /etc/passwd
+//   cat ~/.ssh/id_rsa
+//   diff ~/projekt-a/file.txt ~/projekt-b/file.txt
+//
+// Hierarchie der Settings-Dateien:
+// +-----------------------------------------+-------------------+-------------------+
+// | Datei                                   | Scope             | Pfad-Beschränkung |
+// +-----------------------------------------+-------------------+-------------------+
+// | .claude/settings.local.json             | Projekt           | Nein              |
+// | ~/.claude/settings.json                 | User              | Nein              |
+// | /etc/claude-code/managed-settings.json  | System/Enterprise | Nein              |
+// +-----------------------------------------+-------------------+-------------------+
+//
+// Um PFADE zu beschränken, nutze Read() und Edit() Regeln im deny-Block:
+//   "Read(/etc/shadow)",
+//   "Read(**/.env)",
+//   "Read(~/.ssh/**)",
+//   "Edit(/etc/**)",
+//
+// Working Directory beibehalten (optional):
+//   export CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR=1
+//
+// =============================================================================
+{
+  "permissions": {
+    "allow": [
+      // =========================================================================
+      // DATEISYSTEM - LESEN
+      // =========================================================================
+      // Grundlegende Befehle zum Erkunden der Projektstruktur
+      
+      "Bash(cat:*)",           // Dateiinhalt anzeigen
+      "Bash(less:*)",          // Datei pagen
+      "Bash(head:*)",          // Erste Zeilen
+      "Bash(tail:*)",          // Letzte Zeilen
+      "Bash(ls:*)",            // Verzeichnis listen
+      "Bash(tree:*)",          // Baumstruktur
+      "Bash(find:*)",          // Dateien suchen
+      "Bash(grep:*)",          // In Dateien suchen
+      "Bash(awk:*)",           // Text verarbeiten
+      "Bash(sed:*)",           // Text transformieren (ohne -i)
+      "Bash(wc:*)",            // Zeilen/Wörter zählen
+      "Bash(diff:*)",          // Dateien vergleichen
+      "Bash(file:*)",          // Dateityp erkennen
+      "Bash(stat:*)",          // Datei-Metadaten
+      "Bash(realpath:*)",      // Absoluten Pfad auflösen
+      "Bash(dirname:*)",       // Verzeichnisname
+      "Bash(basename:*)",      // Dateiname
+      
+      // =========================================================================
+      // DATEISYSTEM - SCHREIBEN
+      // =========================================================================
+      // Ermöglicht Erstellen und Verschieben von Dateien
+      
+      "Bash(mkdir:*)",         // Verzeichnisse erstellen
+      "Bash(touch:*)",         // Leere Dateien erstellen
+      "Bash(cp:*)",            // Dateien kopieren
+      "Bash(mv:*)",            // Dateien verschieben/umbenennen
+      "Bash(tee:*)",           // In Datei schreiben
+      
+      // =========================================================================
+      // ANSIBLE - VALIDIERUNG & LINTING
+      // =========================================================================
+      // Syntaxprüfung und Code-Qualität - immer sicher
+      
+      "Bash(ansible-lint:*)",                        // Linting
+      "Bash(ansible-playbook:--syntax-check*)",      // Syntax prüfen
+      "Bash(ansible-playbook:--check*)",             // Dry-Run (Check Mode)
+      "Bash(ansible-playbook:--list-tasks*)",        // Tasks auflisten
+      "Bash(ansible-playbook:--list-tags*)",         // Tags auflisten
+      "Bash(ansible-playbook:--list-hosts*)",        // Hosts auflisten
+      "Bash(ansible-inventory:*)",                   // Inventory anzeigen
+      "Bash(ansible-config:*)",                      // Konfiguration anzeigen
+      "Bash(ansible-doc:*)",                         // Modul-Dokumentation
+      "Bash(ansible:--version*)",                    // Version prüfen
+      
+      // =========================================================================
+      // ANSIBLE - PLAYBOOK AUSFÜHRUNG
+      // =========================================================================
+      // ACHTUNG: Diese Regeln erlauben echte Ausführung!
+      // Passe die Einschränkungen an deine Umgebung an.
+      
+      // Localhost - für lokale Entwicklung und Tests
+      "Bash(ansible-playbook:*-c local*)",           // Lokale Connection
+      "Bash(ansible-playbook:*--connection=local*)", // Lokale Connection (lang)
+      "Bash(ansible-playbook:*localhost*)",          // Localhost explizit
+      "Bash(ansible-playbook:*127.0.0.1*)",          // Localhost IP
+      
+      // Mit spezifischem Inventory (Test-Umgebung)
+      // "Bash(ansible-playbook:*-i inventory/test*)",
+      // "Bash(ansible-playbook:*-i inventory/dev*)",
+      
+      // Mit Limit auf bestimmte Gruppen
+      // "Bash(ansible-playbook:*--limit test*)",
+      // "Bash(ansible-playbook:*--limit dev*)",
+      // "Bash(ansible-playbook:*--limit staging*)",
+      
+      // Für Molecule-Tests (Container)
+      "Bash(ansible-playbook:*molecule*)",
+      
+      // =========================================================================
+      // ANSIBLE GALAXY
+      // =========================================================================
+      // Collection und Role Management
+      
+      "Bash(ansible-galaxy:collection install*)",    // Collections installieren
+      "Bash(ansible-galaxy:collection list*)",       // Collections auflisten
+      "Bash(ansible-galaxy:role install*)",          // Rollen installieren
+      "Bash(ansible-galaxy:role list*)",             // Rollen auflisten
+      "Bash(ansible-galaxy:init*)",                  // Neue Rolle erstellen
+      
+      // =========================================================================
+      // MOLECULE TESTING
+      // =========================================================================
+      // Container-basierte Tests - sicher da isoliert
+      
+      "Bash(molecule:*)",                            // Alle Molecule-Befehle
+      // Oder granular:
+      // "Bash(molecule:create*)",                   // Container erstellen
+      // "Bash(molecule:converge*)",                 // Playbook ausführen
+      // "Bash(molecule:verify*)",                   // Tests ausführen
+      // "Bash(molecule:destroy*)",                  // Container löschen
+      // "Bash(molecule:test*)",                     // Vollständiger Test
+      // "Bash(molecule:list*)",                     // Status anzeigen
+      // "Bash(molecule:login*)",                    // In Container einloggen
+      // "Bash(molecule:syntax*)",                   // Syntax prüfen
+      // "Bash(molecule:lint*)",                     // Linting
+      
+      // =========================================================================
+      // GIT - LESEND
+      // =========================================================================
+      // Versionskontrolle ohne Änderungen
+      
+      "Bash(git status:*)",      // Status anzeigen
+      "Bash(git diff:*)",        // Änderungen anzeigen
+      "Bash(git log:*)",         // Historie anzeigen
+      "Bash(git show:*)",        // Commits anzeigen
+      "Bash(git branch:*)",      // Branches auflisten
+      "Bash(git tag:*)",         // Tags auflisten
+      "Bash(git remote:*)",      // Remotes anzeigen
+      "Bash(git stash:list*)",   // Stashes auflisten
+      "Bash(git blame:*)",       // Änderungshistorie pro Zeile
+      "Bash(git shortlog:*)",    // Zusammenfassung
+      
+      // =========================================================================
+      // GIT - SCHREIBEND
+      // =========================================================================
+      // Änderungen vorbereiten und committen
+      
+      "Bash(git add:*)",         // Dateien stagen
+      "Bash(git commit:*)",      // Committen
+      "Bash(git stash:*)",       // Änderungen zwischenspeichern
+      "Bash(git checkout:*)",    // Branch wechseln / Dateien wiederherstellen
+      "Bash(git switch:*)",      // Branch wechseln (modern)
+      "Bash(git branch:-*)",     // Branches erstellen/löschen
+      "Bash(git merge:*)",       // Branches mergen
+      "Bash(git rebase:*)",      // Rebase (interaktiv)
+      "Bash(git cherry-pick:*)", // Einzelne Commits übernehmen
+      "Bash(git tag:-a*)",       // Tags erstellen
+      
+      // =========================================================================
+      // YAML/JSON TOOLS
+      // =========================================================================
+      // Für Ansible-Entwicklung unverzichtbar
+      
+      "Bash(yamllint:*)",        // YAML Linting
+      "Bash(yq:*)",              // YAML Query/Manipulation
+      "Bash(jq:*)",              // JSON Query/Manipulation
+      "Bash(python:-c*)",        // Python One-Liner (für YAML/JSON)
+      "Bash(python3:-c*)",       // Python3 One-Liner
+      
+      // =========================================================================
+      // PYTHON/PIP
+      // =========================================================================
+      // Für Ansible-Dependencies und virtuelle Umgebungen
+      
+      "Bash(pip:install*)",      // Pakete installieren
+      "Bash(pip:list*)",         // Installierte Pakete
+      "Bash(pip:show*)",         // Paket-Details
+      "Bash(pip:freeze*)",       // Requirements ausgeben
+      "Bash(pip3:*)",            // Python3 pip
+      "Bash(python:-m venv*)",   // Virtualenv erstellen
+      "Bash(python3:-m venv*)",  // Virtualenv erstellen
+      "Bash(source:*/activate)", // Virtualenv aktivieren
+      
+      // =========================================================================
+      // DOCKER (für Molecule)
+      // =========================================================================
+      // Container-Management für Tests
+      
+      "Bash(docker:ps*)",        // Container auflisten
+      "Bash(docker:images*)",    // Images auflisten
+      "Bash(docker:logs*)",      // Container-Logs
+      "Bash(docker:exec*)",      // In Container ausführen
+      "Bash(docker:inspect*)",   // Container-Details
+      "Bash(docker:build*)",     // Images bauen
+      "Bash(docker:pull*)",      // Images herunterladen
+      "Bash(docker:rm*)",        // Container löschen
+      "Bash(docker:rmi*)",       // Images löschen
+      "Bash(docker:stop*)",      // Container stoppen
+      "Bash(docker:start*)",     // Container starten
+      "Bash(docker-compose:*)",  // Docker Compose
+      
+      // =========================================================================
+      // NETZWERK & DEBUG
+      // =========================================================================
+      // Für Verbindungstests und Debugging
+      
+      "Bash(ping:*)",            // Erreichbarkeit testen
+      "Bash(curl:*)",            // HTTP-Requests
+      "Bash(wget:*)",            // Downloads
+      "Bash(ssh:-o*)",           // SSH-Verbindungstest
+      "Bash(nc:*)",              // Netcat
+      "Bash(host:*)",            // DNS-Lookup
+      "Bash(dig:*)",             // DNS-Lookup (detailliert)
+      
+      // =========================================================================
+      // SYSTEM-INFO (nur lesend)
+      // =========================================================================
+      // Systeminformationen für Debugging
+      
+      "Bash(uname:*)",           // Kernel-Info
+      "Bash(hostname:*)",        // Hostname
+      "Bash(id:*)",              // User-Info
+      "Bash(whoami:*)",          // Aktueller User
+      "Bash(pwd:*)",             // Aktuelles Verzeichnis
+      "Bash(env:*)",             // Umgebungsvariablen
+      "Bash(printenv:*)",        // Umgebungsvariablen
+      "Bash(date:*)",            // Datum/Zeit
+      "Bash(uptime:*)",          // System-Uptime
+      "Bash(df:*)",              // Festplattenplatz
+      "Bash(free:*)",            // Speicher
+      "Bash(ps:*)",              // Prozesse
+      "Bash(which:*)",           // Programmpfad finden
+      "Bash(type:*)",            // Befehlstyp
+      "Bash(command:-v*)"        // Befehl verfügbar?
+    ],
+    
+    // =========================================================================
+    // DENY - VERBOTENE BEFEHLE UND PFADE
+    // =========================================================================
+    // Diese Regeln werden IMMER angewendet, auch wenn allow matcht.
+    // Deny hat höhere Priorität als Allow!
+    
+    "deny": [
+      // =========================================================================
+      // PFAD-BESCHRÄNKUNGEN (Read/Edit)
+      // =========================================================================
+      // WICHTIG: Diese beschränken Claudes eingebaute Tools (Read, Edit, Write)
+      // UND werden "best-effort" auf Bash-Tools wie grep, cat, ls angewendet.
+      //
+      // Syntax:
+      //   Read(<pfad>)   - Lesezugriff blockieren
+      //   Edit(<pfad>)   - Schreibzugriff blockieren
+      //   **             - Rekursiv alle Unterverzeichnisse
+      //   *              - Wildcard für Dateinamen
+      
+      // -------------------------------------------------------------------------
+      // SYSTEM-VERZEICHNISSE - Lesen blockieren
+      // -------------------------------------------------------------------------
+      "Read(/etc/shadow)",                 // Passwort-Hashes
+      "Read(/etc/gshadow)",                // Gruppen-Passwörter
+      "Read(/etc/sudoers)",                // Sudo-Konfiguration
+      "Read(/etc/sudoers.d/**)",           // Sudo-Includes
+      "Read(/root/**)",                    // Root Home
+      
+      // -------------------------------------------------------------------------
+      // SSH & CRYPTO - Niemals lesen
+      // -------------------------------------------------------------------------
+      "Read(**/.ssh/**)",                  // Alle SSH-Verzeichnisse
+      "Read(**/id_rsa)",                   // RSA Private Keys
+      "Read(**/id_rsa.*)",                 // RSA Key-Dateien
+      "Read(**/id_ed25519)",               // ED25519 Private Keys
+      "Read(**/id_ed25519.*)",             // ED25519 Key-Dateien
+      "Read(**/id_ecdsa)",                 // ECDSA Private Keys
+      "Read(**/id_dsa)",                   // DSA Private Keys (legacy)
+      "Read(**/*.pem)",                    // PEM-Zertifikate/Keys
+      "Read(**/*.key)",                    // Private Key-Dateien
+      "Read(**/*.p12)",                    // PKCS12-Dateien
+      "Read(**/*.pfx)",                    // PFX-Zertifikate
+      
+      // -------------------------------------------------------------------------
+      // SECRETS & CREDENTIALS - Niemals lesen
+      // -------------------------------------------------------------------------
+      "Read(**/.env)",                     // Environment-Dateien
+      "Read(**/.env.*)",                   // .env.local, .env.prod, etc.
+      "Read(**/*secret*)",                 // Dateien mit "secret" im Namen
+      "Read(**/*password*)",               // Dateien mit "password" im Namen
+      "Read(**/*credential*)",             // Dateien mit "credential" im Namen
+      "Read(**/*.vault)",                  // Ansible Vault-Dateien
+      "Read(**/*.vault.yml)",              // Ansible Vault YAML
+      "Read(**/*.vault.yaml)",             // Ansible Vault YAML
+      "Read(**/vault.yml)",                // Ansible Vault
+      "Read(**/vault.yaml)",               // Ansible Vault
+      "Read(**/*secrets.yml)",             // Secrets-Dateien
+      "Read(**/*secrets.yaml)",            // Secrets-Dateien
+      "Read(**/.netrc)",                   // FTP/Curl Credentials
+      "Read(**/.npmrc)",                   // NPM Tokens
+      "Read(**/.pypirc)",                  // PyPI Credentials
+      "Read(**/.docker/config.json)",      // Docker Registry Auth
+      "Read(**/.kube/config)",             // Kubernetes Credentials
+      "Read(**/.aws/credentials)",         // AWS Credentials
+      "Read(**/.azure/**)",                // Azure Credentials
+      "Read(**/.gcloud/**)",               // GCloud Credentials
+      
+      // -------------------------------------------------------------------------
+      // HISTORY & LOGS - Potenzielle Secrets
+      // -------------------------------------------------------------------------
+      "Read(**/.bash_history)",            // Bash Historie (kann Passwörter enthalten)
+      "Read(**/.zsh_history)",             // ZSH Historie
+      "Read(**/.python_history)",          // Python Historie
+      "Read(**/.mysql_history)",           // MySQL Historie
+      "Read(**/.psql_history)",            // PostgreSQL Historie
+      
+      // -------------------------------------------------------------------------
+      // BROWSER & APPS - Persönliche Daten
+      // -------------------------------------------------------------------------
+      "Read(**/.mozilla/**)",              // Firefox Profil
+      "Read(**/.config/google-chrome/**)", // Chrome Profil
+      "Read(**/.config/chromium/**)",      // Chromium Profil
+      "Read(**/Login Data)",               // Browser Passwörter
+      "Read(**/Cookies)",                  // Browser Cookies
+      
+      // -------------------------------------------------------------------------
+      // SYSTEM-VERZEICHNISSE - Schreiben blockieren
+      // -------------------------------------------------------------------------
+      "Edit(/etc/**)",                     // Kein Schreiben nach /etc
+      "Edit(/usr/**)",                     // Kein Schreiben nach /usr
+      "Edit(/bin/**)",                     // Kein Schreiben nach /bin
+      "Edit(/sbin/**)",                    // Kein Schreiben nach /sbin
+      "Edit(/boot/**)",                    // Kein Schreiben nach /boot
+      "Edit(/root/**)",                    // Kein Schreiben nach /root
+      "Edit(/var/log/**)",                 // Keine Log-Manipulation
+      
+      // -------------------------------------------------------------------------
+      // ANDERE USER - Kein Zugriff
+      // -------------------------------------------------------------------------
+      "Read(/home/*/.ssh/**)",             // SSH anderer User
+      "Read(/home/*/.gnupg/**)",           // GPG anderer User
+      "Edit(/home/*/**)",                  // Kein Schreiben bei anderen Usern
+      
+      // -------------------------------------------------------------------------
+      // PRODUKTIONS-SCHUTZ
+      // -------------------------------------------------------------------------
+      // Verhindert versehentliche Produktions-Deployments
+      
+      "Bash(ansible-playbook:*-i /etc/ansible/hosts*)",  // System-Inventory
+      "Bash(ansible-playbook:*inventory/prod*)",         // Produktions-Inventory
+      "Bash(ansible-playbook:*--limit prod*)",           // Produktions-Hosts
+      "Bash(ansible-playbook:*--limit production*)",     // Produktions-Hosts
+      
+      // -------------------------------------------------------------------------
+      // GIT REMOTE - SCHUTZ
+      // -------------------------------------------------------------------------
+      // Push nur nach expliziter Bestätigung
+      
+      "Bash(git push:*)",              // Kein automatisches Push
+      "Bash(git push:--force*)",       // Kein Force-Push
+      "Bash(git push:-f*)",            // Kein Force-Push (kurz)
+      
+      // -------------------------------------------------------------------------
+      // DESTRUKTIVE GIT-OPERATIONEN
+      // -------------------------------------------------------------------------
+      // Verhindern von Datenverlust
+      
+      "Bash(git reset:--hard*)",       // Hard Reset
+      "Bash(git clean:-fd*)",          // Untracked löschen
+      "Bash(git clean:-fx*)",          // Alles löschen
+      
+      // -------------------------------------------------------------------------
+      // SYSTEM-ADMINISTRATION
+      // -------------------------------------------------------------------------
+      // Keine Systemänderungen ohne explizite Freigabe
+      
+      "Bash(sudo:*)",                  // Keine Root-Rechte
+      "Bash(su:*)",                    // Kein User-Wechsel
+      "Bash(systemctl:*)",             // Keine Service-Kontrolle
+      "Bash(service:*)",               // Keine Service-Kontrolle (alt)
+      "Bash(reboot:*)",                // Kein Neustart
+      "Bash(shutdown:*)",              // Kein Herunterfahren
+      "Bash(init:*)",                  // Kein Runlevel-Wechsel
+      
+      // -------------------------------------------------------------------------
+      // DESTRUKTIVE DATEISYSTEM-OPS
+      // -------------------------------------------------------------------------
+      // Schützt vor versehentlichem Löschen
+      
+      "Bash(rm:-rf /*)",               // Kein rekursives Löschen von /
+      "Bash(rm:-rf ~/*)",              // Kein Löschen von Home
+      "Bash(rm:-rf /home/*)",          // Kein Löschen von /home
+      "Bash(rm:-rf /etc/*)",           // Kein Löschen von /etc
+      "Bash(rm:-rf /var/*)",           // Kein Löschen von /var
+      "Bash(chmod:-R 777*)",           // Keine unsicheren Berechtigungen
+      "Bash(chown:-R*)",               // Kein rekursives Ownership-Change
+      
+      // -------------------------------------------------------------------------
+      // NETZWERK/SICHERHEIT
+      // -------------------------------------------------------------------------
+      // Verhindert Netzwerk-Manipulation
+      
+      "Bash(iptables:*)",              // Keine Firewall-Änderungen
+      "Bash(firewall-cmd:*)",          // Keine Firewall-Änderungen
+      "Bash(nft:*)",                   // Keine nftables-Änderungen
+      "Bash(ip:route*)",               // Keine Routing-Änderungen
+      "Bash(ip:addr*)",                // Keine IP-Änderungen
+      
+      // -------------------------------------------------------------------------
+      // PAKET-MANAGEMENT
+      // -------------------------------------------------------------------------
+      // Keine System-Paket-Änderungen
+      
+      "Bash(dnf:*)",                   // Kein DNF
+      "Bash(yum:*)",                   // Kein YUM
+      "Bash(rpm:-i*)",                 // Keine RPM-Installation
+      "Bash(rpm:-e*)",                 // Keine RPM-Deinstallation
+      "Bash(apt:*)",                   // Kein APT
+      "Bash(apt-get:*)",               // Kein APT-GET
+      
+      // -------------------------------------------------------------------------
+      // SENSITIVE DATEN VIA BASH
+      // -------------------------------------------------------------------------
+      // Zusätzlicher Schutz für Bash-Tools (ergänzt Read-Regeln)
+      
+      "Bash(cat:*vault*)",             // Keine Vault-Dateien ausgeben
+      "Bash(cat:*.vault*)",            // Keine Vault-Dateien
+      "Bash(cat:*secret*)",            // Keine Secret-Dateien
+      "Bash(cat:*.env*)",              // Keine .env-Dateien
+      "Bash(cat:*password*)",          // Keine Passwort-Dateien
+      "Bash(cat:*id_rsa*)",            // Keine SSH-Keys
+      "Bash(cat:*id_ed25519*)",        // Keine SSH-Keys
+      "Bash(cat:*/etc/shadow*)",       // Keine Shadow-Datei
+      "Bash(cat:*/etc/gshadow*)",      // Keine GShadow-Datei
+      "Bash(grep:*id_rsa*)",           // Kein Grep in SSH-Keys
+      "Bash(grep:*id_ed25519*)",       // Kein Grep in SSH-Keys
+      "Bash(grep:*.env*)",             // Kein Grep in .env
+      "Bash(less:*id_rsa*)",           // Kein Less für SSH-Keys
+      "Bash(less:*id_ed25519*)"        // Kein Less für SSH-Keys
+    ]
+  }
+}
