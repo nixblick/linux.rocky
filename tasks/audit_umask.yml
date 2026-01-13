@@ -2,67 +2,108 @@
 # Umask Audit Tasks
 
 - name: Audit Umask | Check umask in /etc/profile
-  shell: "grep -E '^[[:space:]]*umask[[:space:]]+' /etc/profile | tail -1"
+  ansible.builtin.shell: |
+    set -o pipefail
+    grep -E '^[[:space:]]*umask[[:space:]]+' /etc/profile | tail -1
+  args:
+    executable: /bin/bash
   register: profile_umask
   changed_when: false
   failed_when: false
 
 - name: Audit Umask | Verify /etc/profile umask
-  set_fact:
-    audit_results: "{{ audit_results + ['[Umask] /etc/profile: ' + ('PASS - umask ' + default_umask if default_umask in profile_umask.stdout else 'FAIL - Expected ' + default_umask + ', Found: ' + profile_umask.stdout)] }}"
-    audit_violations: "{{ audit_violations + ['Umask: /etc/profile does not have umask ' + default_umask] if default_umask not in profile_umask.stdout else audit_violations }}"
+  ansible.builtin.set_fact:
+    audit_results: >-
+      {{ audit_results + ['[Umask] /etc/profile: ' +
+      ('PASS - umask ' + default_umask if default_umask in profile_umask.stdout
+      else 'FAIL - Expected ' + default_umask + ', Found: ' + profile_umask.stdout)] }}
+    audit_violations: >-
+      {{ audit_violations + ['Umask: /etc/profile does not have umask ' + default_umask]
+      if default_umask not in profile_umask.stdout else audit_violations }}
   when: profile_umask.rc == 0
 
 - name: Audit Umask | Check umask in /etc/bashrc
-  shell: "grep -E '^[[:space:]]*umask[[:space:]]+' /etc/bashrc | tail -1"
+  ansible.builtin.shell: |
+    set -o pipefail
+    grep -E '^[[:space:]]*umask[[:space:]]+' /etc/bashrc | tail -1
+  args:
+    executable: /bin/bash
   register: bashrc_umask
   changed_when: false
   failed_when: false
 
 - name: Audit Umask | Verify /etc/bashrc umask
-  set_fact:
-    audit_results: "{{ audit_results + ['[Umask] /etc/bashrc: ' + ('PASS - umask ' + default_umask if default_umask in bashrc_umask.stdout else 'FAIL - Expected ' + default_umask + ', Found: ' + bashrc_umask.stdout)] }}"
-    audit_violations: "{{ audit_violations + ['Umask: /etc/bashrc does not have umask ' + default_umask] if default_umask not in bashrc_umask.stdout else audit_violations }}"
+  ansible.builtin.set_fact:
+    audit_results: >-
+      {{ audit_results + ['[Umask] /etc/bashrc: ' +
+      ('PASS - umask ' + default_umask if default_umask in bashrc_umask.stdout
+      else 'FAIL - Expected ' + default_umask + ', Found: ' + bashrc_umask.stdout)] }}
+    audit_violations: >-
+      {{ audit_violations + ['Umask: /etc/bashrc does not have umask ' + default_umask]
+      if default_umask not in bashrc_umask.stdout else audit_violations }}
   when: bashrc_umask.rc == 0
 
 - name: Audit Umask | Check umask in /etc/login.defs
-  shell: "grep -E '^UMASK[[:space:]]+' /etc/login.defs"
+  ansible.builtin.shell: "grep -E '^UMASK[[:space:]]+' /etc/login.defs"
   register: logindefs_umask
   changed_when: false
   failed_when: false
 
 - name: Audit Umask | Verify /etc/login.defs umask
-  set_fact:
-    audit_results: "{{ audit_results + ['[Umask] /etc/login.defs: ' + ('PASS - UMASK ' + default_umask if default_umask in logindefs_umask.stdout else 'FAIL - Expected ' + default_umask + ', Found: ' + logindefs_umask.stdout)] }}"
-    audit_violations: "{{ audit_violations + ['Umask: /etc/login.defs does not have UMASK ' + default_umask] if default_umask not in logindefs_umask.stdout else audit_violations }}"
+  ansible.builtin.set_fact:
+    audit_results: >-
+      {{ audit_results + ['[Umask] /etc/login.defs: ' +
+      ('PASS - UMASK ' + default_umask if default_umask in logindefs_umask.stdout
+      else 'FAIL - Expected ' + default_umask + ', Found: ' + logindefs_umask.stdout)] }}
+    audit_violations: >-
+      {{ audit_violations + ['Umask: /etc/login.defs does not have UMASK ' + default_umask]
+      if default_umask not in logindefs_umask.stdout else audit_violations }}
   when: logindefs_umask.rc == 0
 
 - name: Audit Umask | Check root umask in /root/.bashrc
-  shell: "grep -E '^[[:space:]]*umask[[:space:]]+' /root/.bashrc | tail -1"
+  ansible.builtin.shell: |
+    set -o pipefail
+    grep -E '^[[:space:]]*umask[[:space:]]+' /root/.bashrc | tail -1
+  args:
+    executable: /bin/bash
   register: root_bashrc_umask
   changed_when: false
   failed_when: false
 
 - name: Audit Umask | Verify root umask
-  set_fact:
-    audit_results: "{{ audit_results + ['[Umask] /root/.bashrc: ' + ('PASS - umask ' + root_umask if root_umask in root_bashrc_umask.stdout else 'FAIL - Expected ' + root_umask + ', Found: ' + root_bashrc_umask.stdout)] }}"
-    audit_violations: "{{ audit_violations + ['Umask: /root/.bashrc does not have umask ' + root_umask] if root_umask not in root_bashrc_umask.stdout else audit_violations }}"
+  ansible.builtin.set_fact:
+    audit_results: >-
+      {{ audit_results + ['[Umask] /root/.bashrc: ' +
+      ('PASS - umask ' + root_umask if root_umask in root_bashrc_umask.stdout
+      else 'FAIL - Expected ' + root_umask + ', Found: ' + root_bashrc_umask.stdout)] }}
+    audit_violations: >-
+      {{ audit_violations + ['Umask: /root/.bashrc does not have umask ' + root_umask]
+      if root_umask not in root_bashrc_umask.stdout else audit_violations }}
   when: root_bashrc_umask.rc == 0
 
 - name: Audit Umask | Check systemd umask
-  shell: "grep -E '^UMask=' /etc/systemd/system.conf"
+  ansible.builtin.command: "grep -E '^UMask=' /etc/systemd/system.conf"
   register: systemd_umask
   changed_when: false
   failed_when: false
 
 - name: Audit Umask | Verify systemd umask
-  set_fact:
-    audit_results: "{{ audit_results + ['[Umask] systemd: ' + ('PASS - UMask=' + default_umask if default_umask in systemd_umask.stdout else 'FAIL - Expected ' + default_umask + ', Found: ' + systemd_umask.stdout)] }}"
-    audit_violations: "{{ audit_violations + ['Umask: systemd does not have UMask=' + default_umask] if default_umask not in systemd_umask.stdout else audit_violations }}"
+  ansible.builtin.set_fact:
+    audit_results: >-
+      {{ audit_results + ['[Umask] systemd: ' +
+      ('PASS - UMask=' + default_umask if default_umask in systemd_umask.stdout
+      else 'FAIL - Expected ' + default_umask + ', Found: ' + systemd_umask.stdout)] }}
+    audit_violations: >-
+      {{ audit_violations + ['Umask: systemd does not have UMask=' + default_umask]
+      if default_umask not in systemd_umask.stdout else audit_violations }}
   when: systemd_umask.rc == 0
 
 - name: Audit Umask | Check additional config files
-  shell: "grep -E '^[[:space:]]*umask[[:space:]]+' {{ item }} | tail -1"
+  ansible.builtin.shell: |
+    set -o pipefail
+    grep -E '^[[:space:]]*umask[[:space:]]+' {{ item }} | tail -1
+  args:
+    executable: /bin/bash
   loop: "{{ umask_config_files }}"
   register: additional_umask_checks
   changed_when: false
@@ -70,14 +111,18 @@
   when: umask_config_files is defined
 
 - name: Audit Umask | Verify additional config files
-  set_fact:
-    audit_results: "{{ audit_results + ['[Umask] ' + item.item + ': ' + ('PASS' if default_umask in item.stdout else 'FAIL')] }}"
-    audit_violations: "{{ audit_violations + ['Umask: ' + item.item + ' does not have umask ' + default_umask] if default_umask not in item.stdout and item.rc == 0 else audit_violations }}"
+  ansible.builtin.set_fact:
+    audit_results: >-
+      {{ audit_results + ['[Umask] ' + item.item + ': ' +
+      ('PASS' if default_umask in item.stdout else 'FAIL')] }}
+    audit_violations: >-
+      {{ audit_violations + ['Umask: ' + item.item + ' does not have umask ' + default_umask]
+      if default_umask not in item.stdout and item.rc == 0 else audit_violations }}
   loop: "{{ additional_umask_checks.results }}"
   when:
     - umask_config_files is defined
     - additional_umask_checks.results is defined
 
 - name: Audit Umask | Display audit results
-  debug:
+  ansible.builtin.debug:
     msg: "Umask audit completed - {{ audit_results | select('search', 'Umask') | list | length }} checks performed"

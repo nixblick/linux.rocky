@@ -2,7 +2,7 @@
 # SELinux Hardening Tasks
 
 - name: SELinux | Ensure SELinux is installed
-  package:
+  ansible.builtin.package:
     name:
       - libselinux
       - policycoreutils
@@ -12,7 +12,7 @@
     state: present
 
 - name: SELinux | Set SELinux state
-  selinux:
+  ansible.posix.selinux:
     policy: "{{ selinux_policy }}"
     state: "{{ selinux_state }}"
   register: selinux_state_change
@@ -27,7 +27,7 @@
   register: selinux_fcontext_result
 
 - name: SELinux | Restore contexts on changed paths
-  command: "restorecon -Rv {{ item.item.target | regex_replace('\\(.*\\)', '') }}"
+  ansible.builtin.command: "restorecon -Rv {{ item.item.target | regex_replace('\\(.*\\)', '') }}"
   loop: "{{ selinux_fcontext_result.results }}"
   when:
     - selinux_fcontext_result is defined
@@ -35,7 +35,7 @@
   changed_when: true
 
 - name: SELinux | Configure SELinux booleans
-  seboolean:
+  ansible.posix.seboolean:
     name: "{{ item.name }}"
     state: "{{ item.state }}"
     persistent: "{{ item.persistent }}"
@@ -52,5 +52,5 @@
   when: selinux_ports is defined
 
 - name: SELinux | Display configuration status
-  debug:
+  ansible.builtin.debug:
     msg: "SELinux hardening completed - State: {{ selinux_state }}, Policy: {{ selinux_policy }}"

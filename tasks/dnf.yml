@@ -2,7 +2,7 @@
 # DNF/Package Management Hardening Tasks
 
 - name: DNF | Configure DNF security settings
-  lineinfile:
+  ansible.builtin.lineinfile:
     path: /etc/dnf/dnf.conf
     regexp: "^{{ item.key }}="
     line: "{{ item.key }}={{ item.value }}"
@@ -13,13 +13,13 @@
   when: dnf_config is defined
 
 - name: DNF | Ensure dnf-automatic is installed
-  package:
+  ansible.builtin.package:
     name: dnf-automatic
     state: present
   when: dnf_automatic_enabled | bool
 
 - name: DNF | Configure dnf-automatic
-  lineinfile:
+  ansible.builtin.lineinfile:
     path: /etc/dnf/automatic.conf
     regexp: "{{ item.regexp }}"
     line: "{{ item.line }}"
@@ -31,39 +31,39 @@
   when: dnf_automatic_enabled | bool
 
 - name: DNF | Enable and start dnf-automatic timer
-  systemd:
+  ansible.builtin.systemd:
     name: dnf-automatic.timer
     enabled: true
     state: started
   when: dnf_automatic_enabled | bool
 
 - name: DNF | Ensure required security packages are installed
-  package:
+  ansible.builtin.package:
     name: "{{ required_security_packages }}"
     state: present
   when: required_security_packages is defined
 
 - name: DNF | Ensure prohibited packages are removed
-  package:
+  ansible.builtin.package:
     name: "{{ prohibited_packages }}"
     state: absent
   when: prohibited_packages is defined
 
 - name: DNF | Check for available security updates
-  command: dnf updateinfo list security --available
+  ansible.builtin.command: dnf updateinfo list security --available
   register: security_updates
   changed_when: false
   failed_when: false
 
 - name: DNF | Display available security updates
-  debug:
+  ansible.builtin.debug:
     msg: "{{ security_updates.stdout_lines }}"
   when: security_updates.stdout_lines | length > 0
 
 - name: DNF | Set fact for pending updates
-  set_fact:
+  ansible.builtin.set_fact:
     pending_security_updates: "{{ security_updates.stdout_lines | length }}"
 
 - name: DNF | Display configuration status
-  debug:
+  ansible.builtin.debug:
     msg: "DNF hardening completed - Automatic updates: {{ dnf_automatic_enabled }}, Pending security updates: {{ pending_security_updates }}"

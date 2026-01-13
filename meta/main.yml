@@ -1,9 +1,9 @@
 ---
 galaxy_info:
   role_name: rocky_hardening
+  namespace: nixblick
   author: Claude Code & nixblick
   description: Umfassende Security Hardening und Audit Rolle für Rocky Linux
-  company:
 
   license: MIT
 
@@ -12,8 +12,8 @@ galaxy_info:
   platforms:
     - name: EL
       versions:
-        - 8
-        - 9
+        - "8"
+        - "9"
 
   galaxy_tags:
     - security

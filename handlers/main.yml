@@ -1,0 +1,10 @@
+---
+# Handlers for Rocky Linux Security Hardening Role
+
+- name: Reload systemd
+  ansible.builtin.systemd:
+    daemon_reexec: true
+
+- name: Reload firewalld
+  ansible.builtin.command: firewall-cmd --reload
+  changed_when: false

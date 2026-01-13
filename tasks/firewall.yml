@@ -2,23 +2,23 @@
 # Firewall Hardening Tasks
 
 - name: Firewall | Ensure firewalld is installed
-  package:
+  ansible.builtin.package:
     name: firewalld
     state: present
 
 - name: Firewall | Ensure firewalld is enabled and running
-  service:
+  ansible.builtin.service:
     name: firewalld
     state: started
     enabled: true
 
 - name: Firewall | Set default zone
-  command: "firewall-cmd --set-default-zone={{ firewall_default_zone }}"
+  ansible.builtin.command: "firewall-cmd --set-default-zone={{ firewall_default_zone }}"
   register: default_zone_result
   changed_when: "'ZONE_ALREADY_SET' not in default_zone_result.stderr"
 
 - name: Firewall | Allow services
-  firewalld:
+  ansible.posix.firewalld:
     service: "{{ item }}"
     permanent: true
     state: enabled
@@ -28,7 +28,7 @@
   when: firewall_allowed_services is defined
 
 - name: Firewall | Allow specific ports
-  firewalld:
+  ansible.posix.firewalld:
     port: "{{ item }}"
     permanent: true
     state: enabled
@@ -38,7 +38,7 @@
   when: firewall_allowed_ports is defined
 
 - name: Firewall | Block specific ports
-  firewalld:
+  ansible.posix.firewalld:
     port: "{{ item }}"
     permanent: true
     state: disabled
@@ -48,7 +48,7 @@
   when: firewall_blocked_ports is defined and firewall_blocked_ports | length > 0
 
 - name: Firewall | Configure rich rules
-  firewalld:
+  ansible.posix.firewalld:
     rich_rule: "{{ item }}"
     permanent: true
     state: enabled
@@ -56,11 +56,8 @@
     zone: "{{ firewall_default_zone }}"
   loop: "{{ firewall_rich_rules }}"
   when: firewall_rich_rules is defined
-
-- name: Firewall | Reload firewalld
-  command: firewall-cmd --reload
-  changed_when: false
+  notify: Reload firewalld
 
 - name: Firewall | Display configuration status
-  debug:
+  ansible.builtin.debug:
     msg: "Firewall hardening completed - Default zone: {{ firewall_default_zone }}"

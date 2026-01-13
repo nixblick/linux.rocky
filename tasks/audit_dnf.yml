@@ -2,7 +2,7 @@
 # DNF/Package Management Audit Tasks
 
 - name: Audit DNF | Check DNF configuration
-  shell: "grep '^{{ item.key }}=' /etc/dnf/dnf.conf"
+  ansible.builtin.command: "grep '^{{ item.key }}=' /etc/dnf/dnf.conf"
   loop: "{{ dnf_config | dict2items }}"
   register: dnf_config_check
   changed_when: false
@@ -10,35 +10,43 @@
   when: dnf_config is defined
 
 - name: Audit DNF | Verify DNF configuration
-  set_fact:
+  ansible.builtin.set_fact:
     audit_results: "{{ audit_results + ['[DNF] Config ' + item.item.key + ': ' + status] }}"
     audit_violations: "{{ audit_violations + violation }}"
   loop: "{{ dnf_config_check.results }}"
   vars:
     expected_value: "{{ item.item.key }}={{ item.item.value }}"
     is_compliant: "{{ expected_value in item.stdout }}"
-    status: "{{ 'PASS - ' + expected_value if is_compliant else 'FAIL - Expected ' + expected_value }}"
-    violation: "{{ [] if is_compliant else ['DNF: Configuration ' + item.item.key + ' not set to ' + item.item.value | string] }}"
+    status: >-
+      {{ 'PASS - ' + expected_value if is_compliant
+      else 'FAIL - Expected ' + expected_value }}
+    violation: >-
+      {{ [] if is_compliant
+      else ['DNF: Configuration ' + item.item.key + ' not set to ' + item.item.value | string] }}
   when:
     - dnf_config is defined
     - dnf_config_check.results is defined
     - item.rc == 0
 
 - name: Audit DNF | Check if dnf-automatic is installed
-  package_facts:
+  ansible.builtin.package_facts:
     manager: auto
 
 - name: Audit DNF | Verify dnf-automatic installation
-  set_fact:
+  ansible.builtin.set_fact:
     audit_results: "{{ audit_results + ['[DNF] dnf-automatic installation: ' + status] }}"
     audit_violations: "{{ audit_violations + violation }}"
   vars:
     is_installed: "{{ 'dnf-automatic' in ansible_facts.packages }}"
-    status: "{{ 'PASS' if (is_installed and dnf_automatic_enabled) or (not is_installed and not dnf_automatic_enabled) else 'FAIL' }}"
-    violation: "{{ [] if status == 'PASS' else ['DNF: dnf-automatic installation state incorrect'] }}"
+    status: >-
+      {{ 'PASS' if (is_installed and dnf_automatic_enabled) or
+      (not is_installed and not dnf_automatic_enabled) else 'FAIL' }}
+    violation: >-
+      {{ [] if status == 'PASS'
+      else ['DNF: dnf-automatic installation state incorrect'] }}
 
 - name: Audit DNF | Check dnf-automatic configuration
-  shell: "grep '^{{ item.key }} =' /etc/dnf/automatic.conf"
+  ansible.builtin.command: "grep '^{{ item.key }} =' /etc/dnf/automatic.conf"
   loop:
     - { key: 'apply_updates', value: "{{ dnf_automatic_apply_updates | lower }}" }
     - { key: 'download_updates', value: "{{ dnf_automatic_download_updates | lower }}" }
@@ -50,47 +58,56 @@
     - "'dnf-automatic' in ansible_facts.packages"
 
 - name: Audit DNF | Verify dnf-automatic configuration
-  set_fact:
+  ansible.builtin.set_fact:
     audit_results: "{{ audit_results + ['[DNF] dnf-automatic ' + item.item.key + ': ' + status] }}"
     audit_violations: "{{ audit_violations + violation }}"
   loop: "{{ dnf_auto_config_check.results }}"
   vars:
     expected_value: "{{ item.item.value }}"
     is_compliant: "{{ expected_value in item.stdout }}"
-    status: "{{ 'PASS - ' + expected_value if is_compliant else 'FAIL - Expected ' + expected_value }}"
-    violation: "{{ [] if is_compliant else ['DNF: dnf-automatic ' + item.item.key + ' not set to ' + expected_value] }}"
+    status: >-
+      {{ 'PASS - ' + expected_value if is_compliant
+      else 'FAIL - Expected ' + expected_value }}
+    violation: >-
+      {{ [] if is_compliant
+      else ['DNF: dnf-automatic ' + item.item.key + ' not set to ' + expected_value] }}
   when:
     - dnf_automatic_enabled | bool
     - dnf_auto_config_check.results is defined
     - item.rc == 0
 
 - name: Audit DNF | Check dnf-automatic timer status
-  systemd:
+  ansible.builtin.systemd:
     name: dnf-automatic.timer
   register: dnf_auto_timer_status
   failed_when: false
   when: dnf_automatic_enabled | bool
 
 - name: Audit DNF | Verify dnf-automatic timer
-  set_fact:
+  ansible.builtin.set_fact:
     audit_results: "{{ audit_results + ['[DNF] dnf-automatic.timer: ' + status] }}"
     audit_violations: "{{ audit_violations + violation }}"
   vars:
     is_enabled: "{{ dnf_auto_timer_status.status.UnitFileState | default('disabled') == 'enabled' }}"
     is_active: "{{ dnf_auto_timer_status.status.ActiveState | default('inactive') == 'active' }}"
     is_compliant: "{{ is_enabled and is_active }}"
-    status: "{{ 'PASS - enabled and active' if is_compliant else 'FAIL - State: ' + dnf_auto_timer_status.status.UnitFileState | default('unknown') + '/' + dnf_auto_timer_status.status.ActiveState | default('unknown') }}"
-    violation: "{{ [] if is_compliant else ['DNF: dnf-automatic.timer is not properly enabled/active'] }}"
+    status: >-
+      {{ 'PASS - enabled and active' if is_compliant else 'FAIL - State: ' +
+      dnf_auto_timer_status.status.UnitFileState | default('unknown') + '/' +
+      dnf_auto_timer_status.status.ActiveState | default('unknown') }}
+    violation: >-
+      {{ [] if is_compliant
+      else ['DNF: dnf-automatic.timer is not properly enabled/active'] }}
   when:
     - dnf_automatic_enabled | bool
     - dnf_auto_timer_status.status is defined
 
 - name: Audit DNF | Check required security packages
-  package_facts:
+  ansible.builtin.package_facts:
     manager: auto
 
 - name: Audit DNF | Verify required packages
-  set_fact:
+  ansible.builtin.set_fact:
     audit_results: "{{ audit_results + ['[DNF] Required package ' + item + ': ' + status] }}"
     audit_violations: "{{ audit_violations + violation }}"
   loop: "{{ required_security_packages }}"
@@ -101,7 +118,7 @@
   when: required_security_packages is defined
 
 - name: Audit DNF | Check prohibited packages
-  set_fact:
+  ansible.builtin.set_fact:
     audit_results: "{{ audit_results + ['[DNF] Prohibited package ' + item + ': ' + status] }}"
     audit_violations: "{{ audit_violations + violation }}"
   loop: "{{ prohibited_packages }}"
@@ -112,13 +129,13 @@
   when: prohibited_packages is defined
 
 - name: Audit DNF | Check for available security updates
-  command: dnf updateinfo list security --available
+  ansible.builtin.command: dnf updateinfo list security --available
   register: security_updates_check
   changed_when: false
   failed_when: false
 
 - name: Audit DNF | Verify security updates
-  set_fact:
+  ansible.builtin.set_fact:
     audit_results: "{{ audit_results + ['[DNF] Security updates: ' + status] }}"
     audit_violations: "{{ audit_violations + violation }}"
   vars:
@@ -128,13 +145,17 @@
     violation: "{{ ['DNF: ' + updates_count | string + ' security updates available'] if has_updates else [] }}"
 
 - name: Audit DNF | Check GPG check settings
-  shell: "grep -E '^(gpgcheck|localpkg_gpgcheck)=' /etc/dnf/dnf.conf"
+  ansible.builtin.shell: |
+    set -o pipefail
+    grep -E '^(gpgcheck|localpkg_gpgcheck)=' /etc/dnf/dnf.conf
+  args:
+    executable: /bin/bash
   register: gpg_check
   changed_when: false
   failed_when: false
 
 - name: Audit DNF | Verify GPG checks are enabled
-  set_fact:
+  ansible.builtin.set_fact:
     audit_results: "{{ audit_results + ['[DNF] GPG checks: ' + status] }}"
     audit_violations: "{{ audit_violations + violation }}"
   vars:
@@ -146,5 +167,5 @@
   when: gpg_check.rc == 0
 
 - name: Audit DNF | Display audit results
-  debug:
+  ansible.builtin.debug:
     msg: "DNF audit completed - {{ audit_results | select('search', 'DNF') | list | length }} checks performed"
