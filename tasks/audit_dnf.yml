@@ -74,6 +74,8 @@
   when:
     - dnf_automatic_enabled | bool
     - dnf_auto_config_check.results is defined
+    - dnf_auto_config_check.results | length > 0
+    - item.rc is defined
     - item.rc == 0
 
 - name: Audit DNF | Check dnf-automatic timer status
@@ -140,9 +142,9 @@
     audit_violations: "{{ audit_violations + violation }}"
   vars:
     updates_count: "{{ security_updates_check.stdout_lines | length }}"
-    has_updates: "{{ updates_count > 0 }}"
-    status: "{{ 'WARNING - ' + updates_count | string + ' available' if has_updates else 'PASS - none available' }}"
-    violation: "{{ ['DNF: ' + updates_count | string + ' security updates available'] if has_updates else [] }}"
+    has_updates: "{{ (updates_count | int) > 0 }}"
+    status: "{{ 'WARNING - ' + (updates_count | string) + ' available' if has_updates else 'PASS - none available' }}"
+    violation: "{{ ['DNF: ' + (updates_count | string) + ' security updates available'] if has_updates else [] }}"
 
 - name: Audit DNF | Check GPG check settings
   ansible.builtin.shell: |

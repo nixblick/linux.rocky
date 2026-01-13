@@ -26,8 +26,6 @@
   # Rolle einbinden
   roles:
     - role: .
-      tags:
-        - always
 
   # Post-Tasks (optional)
   post_tasks:

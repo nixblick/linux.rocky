@@ -1,6 +1,15 @@
 ---
 # Main entry point for Rocky Linux Security Hardening Role
 
+- name: "════════════════════════════════════════════════════════════════════════════════"
+  ansible.builtin.debug:
+    msg: |
+      ╔═══════════════════════════════════════════════════════════════════════════════╗
+      ║           ROCKY LINUX SECURITY HARDENING ROLE - STARTING                      ║
+      ╚═══════════════════════════════════════════════════════════════════════════════╝
+  tags:
+    - always
+
 - name: Initialize audit results variable
   ansible.builtin.set_fact:
     audit_results: []
@@ -8,93 +17,106 @@
   tags:
     - always
 
-- name: Display role execution mode
-  ansible.builtin.debug:
-    msg: "Rocky Linux Security Hardening Role - Starting execution"
-  tags:
-    - always
-
-# ==============================
+# ══════════════════════════════════════════════════════════════════════════════
 # HARDENING TASKS
-# ==============================
+# ══════════════════════════════════════════════════════════════════════════════
+
+- name: "╔═══════════════════════════════════════════════════════════════════════════════╗"
+  ansible.builtin.debug:
+    msg: "║  PHASE 1: SYSTEM HARDENING                                                    ║"
+  tags:
+    - hardening
 
 - name: Include SELinux hardening tasks
-  ansible.builtin.include_tasks: selinux.yml
+  ansible.builtin.import_tasks: selinux.yml
   when: enable_selinux_hardening | bool
   tags:
     - hardening
     - selinux
 
 - name: Include Firewall hardening tasks
-  ansible.builtin.include_tasks: firewall.yml
+  ansible.builtin.import_tasks: firewall.yml
   when: enable_firewall_hardening | bool
   tags:
     - hardening
     - firewall
 
 - name: Include Umask hardening tasks
-  ansible.builtin.include_tasks: umask.yml
+  ansible.builtin.import_tasks: umask.yml
   when: enable_umask_hardening | bool
   tags:
     - hardening
     - umask
 
 - name: Include Mounts hardening tasks
-  ansible.builtin.include_tasks: mounts.yml
+  ansible.builtin.import_tasks: mounts.yml
   when: enable_mounts_hardening | bool
   tags:
     - hardening
     - mounts
 
 - name: Include DNF hardening tasks
-  ansible.builtin.include_tasks: dnf.yml
+  ansible.builtin.import_tasks: dnf.yml
   when: enable_dnf_hardening | bool
   tags:
     - hardening
     - dnf
 
-# ==============================
+# ══════════════════════════════════════════════════════════════════════════════
 # AUDIT TASKS
-# ==============================
+# ══════════════════════════════════════════════════════════════════════════════
+
+- name: "╔═══════════════════════════════════════════════════════════════════════════════╗"
+  ansible.builtin.debug:
+    msg: "║  PHASE 2: SECURITY AUDIT                                                      ║"
+  tags:
+    - audit
 
 - name: Include SELinux audit tasks
-  ansible.builtin.include_tasks: audit_selinux.yml
+  ansible.builtin.import_tasks: audit_selinux.yml
   when: enable_selinux_audit | bool
   tags:
     - audit
     - audit_selinux
 
 - name: Include Firewall audit tasks
-  ansible.builtin.include_tasks: audit_firewall.yml
+  ansible.builtin.import_tasks: audit_firewall.yml
   when: enable_firewall_audit | bool
   tags:
     - audit
     - audit_firewall
 
 - name: Include Umask audit tasks
-  ansible.builtin.include_tasks: audit_umask.yml
+  ansible.builtin.import_tasks: audit_umask.yml
   when: enable_umask_audit | bool
   tags:
     - audit
     - audit_umask
 
 - name: Include Mounts audit tasks
-  ansible.builtin.include_tasks: audit_mounts.yml
+  ansible.builtin.import_tasks: audit_mounts.yml
   when: enable_mounts_audit | bool
   tags:
     - audit
     - audit_mounts
 
 - name: Include DNF audit tasks
-  ansible.builtin.include_tasks: audit_dnf.yml
+  ansible.builtin.import_tasks: audit_dnf.yml
   when: enable_dnf_audit | bool
   tags:
     - audit
     - audit_dnf
 
-# ==============================
+# ══════════════════════════════════════════════════════════════════════════════
 # AUDIT REPORT GENERATION
-# ==============================
+# ══════════════════════════════════════════════════════════════════════════════
+
+- name: "╔═══════════════════════════════════════════════════════════════════════════════╗"
+  ansible.builtin.debug:
+    msg: "║  PHASE 3: GENERATING AUDIT REPORT                                             ║"
+  tags:
+    - audit
+    - report
 
 - name: Generate audit report
   when: audit_results is defined
@@ -133,7 +155,7 @@
           {% endif %}
           ================================================================================
         dest: "{{ audit_report_path }}"
-        mode: '0600'
+        mode: '0644'
       delegate_to: localhost
 
     - name: Display audit report location
@@ -158,3 +180,9 @@
       when:
         - audit_fail_on_violations | bool
         - audit_violations | length > 0
+
+- name: "╚═══════════════════════════════════════════════════════════════════════════════╝"
+  ansible.builtin.debug:
+    msg: "║  EXECUTION COMPLETED                                                          ║"
+  tags:
+    - always

@@ -78,9 +78,10 @@ umask_config_files:
 # ==============================
 # Required mount options for specific filesystems
 secure_mount_options:
-  - { path: '/tmp', options: 'nodev,nosuid,noexec', fstype: 'tmpfs' }
+  - { path: '/tmp', options: 'nodev,nosuid,noexec', fstype: 'tmpfs', src: 'tmpfs' }
   - { path: '/var/tmp', options: 'nodev,nosuid,noexec', fstype: 'none', src: '/tmp' }
-  - { path: '/home', options: 'nodev', fstype: 'xfs' }
+  # Note: /home hardening is commented out - requires device name which varies per system
+  # - { path: '/home', options: 'nodev', fstype: 'xfs', src: '/dev/mapper/rl-home' }
 
 # Minimum free space percentage per filesystem
 filesystem_min_free_percent:
