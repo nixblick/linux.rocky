@@ -5,6 +5,18 @@
 
 ---
 
+## Syntax-Regeln für Bash-Permissions
+
+```
+Bash(befehl:*)           - Prefix-Matching: "befehl" gefolgt von beliebigem
+Bash(befehl argument*)   - Wildcard am Ende (Leerzeichen statt :)
+Bash(befehl *pattern*)   - Wildcard-Matching innerhalb (Leerzeichen statt :)
+```
+
+**Wichtig:** `:*` nur am Ende für Prefix-Matching. Für Wildcards innerhalb: Leerzeichen verwenden!
+
+---
+
 ## Wichtiger Hinweis: Pfad-Beschränkungen
 
 Claude Code ist **NICHT** auf das Startverzeichnis beschränkt!  
@@ -67,13 +79,13 @@ export CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR=1
 ### Ansible - Validierung & Linting
 
 ```json
-"Bash(ansible-lint:*)",                    // Linting
-"Bash(ansible-playbook:--syntax-check*)",  // Syntax prüfen
-"Bash(ansible-playbook:--check*)",         // Dry-Run (Check Mode)
-"Bash(ansible-playbook:--list-tasks*)",    // Tasks auflisten
-"Bash(ansible-playbook:--list-tags*)",     // Tags auflisten
-"Bash(ansible-inventory:*)",               // Inventory anzeigen
-"Bash(yamllint:*)",                        // YAML Linting
+"Bash(ansible-lint:*)",                   // Linting
+"Bash(ansible-playbook --syntax-check*)", // Syntax prüfen
+"Bash(ansible-playbook --check*)",        // Dry-Run (Check Mode)
+"Bash(ansible-playbook --list-tasks*)",   // Tasks auflisten
+"Bash(ansible-playbook --list-tags*)",    // Tags auflisten
+"Bash(ansible-inventory:*)",              // Inventory anzeigen
+"Bash(yamllint:*)",                       // YAML Linting
 ```
 
 ### Ansible Galaxy
@@ -102,16 +114,16 @@ export CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR=1
 ### Python/Pip
 
 ```json
-"Bash(pip:install --user*)",  // Pakete installieren (user-scope)
-"Bash(pip:list*)",            // Installierte Pakete anzeigen
+"Bash(pip install --user*)",  // Pakete installieren (user-scope)
+"Bash(pip list:*)",           // Installierte Pakete anzeigen
 ```
 
 ### Molecule Testing
 
 ```json
-"Bash(molecule:list*)",    // Status anzeigen
-"Bash(molecule:syntax*)",  // Syntax prüfen
-"Bash(molecule:lint*)",    // Linting
+"Bash(molecule list:*)",    // Status anzeigen
+"Bash(molecule syntax:*)",  // Syntax prüfen
+"Bash(molecule lint:*)",    // Linting
 ```
 
 ---
@@ -179,21 +191,21 @@ export CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR=1
 ### Ansible/Playbook Schutz
 
 ```json
-"Bash(ansible-playbook:*-i /etc/ansible/hosts*)",  // System-Inventory
-"Bash(ansible-playbook:*--limit prod*)",           // Produktions-Hosts
-"Bash(ansible-playbook:*--limit production*)",     // Produktions-Hosts
-"Bash(ansible-playbook:*inventory/prod*)",         // Produktions-Inventory
+"Bash(ansible-playbook *-i /etc/ansible/hosts*)",  // System-Inventory
+"Bash(ansible-playbook *--limit prod*)",           // Produktions-Hosts
+"Bash(ansible-playbook *--limit production*)",     // Produktions-Hosts
+"Bash(ansible-playbook *inventory/prod*)",         // Produktions-Inventory
 ```
 
 ### Git Schutz
 
 ```json
 "Bash(git push:*)",          // Kein automatisches Push
-"Bash(git push:--force*)",   // Kein Force-Push
-"Bash(git push:-f*)",        // Kein Force-Push (kurz)
-"Bash(git reset:--hard*)",   // Hard Reset
-"Bash(git clean:-fd*)",      // Untracked löschen
-"Bash(git clean:-fx*)",      // Alles löschen
+"Bash(git push --force*)",   // Kein Force-Push
+"Bash(git push -f*)",        // Kein Force-Push (kurz)
+"Bash(git reset --hard*)",   // Hard Reset
+"Bash(git clean -fd*)",      // Untracked löschen
+"Bash(git clean -fx*)",      // Alles löschen
 ```
 
 ### System-Administration
@@ -210,12 +222,12 @@ export CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR=1
 ### Destruktive Operationen
 
 ```json
-"Bash(rm:-rf /*)",       // Kein rekursives Löschen von /
-"Bash(rm:-rf ~/*)",      // Kein Löschen von Home
-"Bash(rm:-rf /home/*)",  // Kein Löschen von /home
-"Bash(rm:-rf /etc/*)",   // Kein Löschen von /etc
-"Bash(chmod:-R 777*)",   // Keine unsicheren Berechtigungen
-"Bash(chown:-R*)",       // Kein rekursives Ownership-Change
+"Bash(rm -rf /*)",       // Kein rekursives Löschen von /
+"Bash(rm -rf ~/*)",      // Kein Löschen von Home
+"Bash(rm -rf /home/*)",  // Kein Löschen von /home
+"Bash(rm -rf /etc/*)",   // Kein Löschen von /etc
+"Bash(chmod -R 777*)",   // Keine unsicheren Berechtigungen
+"Bash(chown -R*)",       // Kein rekursives Ownership-Change
 ```
 
 ### Paket-Management
@@ -223,8 +235,8 @@ export CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR=1
 ```json
 "Bash(dnf:*)",     // Kein DNF
 "Bash(yum:*)",     // Kein YUM
-"Bash(rpm:-i*)",   // Keine RPM-Installation
-"Bash(rpm:-e*)",   // Keine RPM-Deinstallation
+"Bash(rpm -i*)",   // Keine RPM-Installation
+"Bash(rpm -e*)",   // Keine RPM-Deinstallation
 ```
 
 ### Netzwerk/Firewall
@@ -238,15 +250,15 @@ export CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR=1
 ### Sensitive Dateien via Bash (doppelte Absicherung)
 
 ```json
-"Bash(cat:*id_rsa*)",       // Keine SSH-Keys ausgeben
-"Bash(cat:*id_ed25519*)",   // Keine SSH-Keys ausgeben
-"Bash(cat:*.env*)",         // Keine .env-Dateien
-"Bash(cat:*vault*)",        // Keine Vault-Dateien
-"Bash(cat:*secret*)",       // Keine Secret-Dateien
-"Bash(cat:*password*)",     // Keine Passwort-Dateien
-"Bash(cat:*/etc/shadow*)",  // Keine Shadow-Datei
-"Bash(grep:*id_rsa*)",      // Kein Grep in SSH-Keys
-"Bash(grep:*.env*)",        // Kein Grep in .env
+"Bash(cat *id_rsa*)",       // Keine SSH-Keys ausgeben
+"Bash(cat *id_ed25519*)",   // Keine SSH-Keys ausgeben
+"Bash(cat *.env*)",         // Keine .env-Dateien
+"Bash(cat *vault*)",        // Keine Vault-Dateien
+"Bash(cat *secret*)",       // Keine Secret-Dateien
+"Bash(cat *password*)",     // Keine Passwort-Dateien
+"Bash(cat */etc/shadow*)",  // Keine Shadow-Datei
+"Bash(grep *id_rsa*)",      // Kein Grep in SSH-Keys
+"Bash(grep *.env*)",        // Kein Grep in .env
 ```
 
 ---
@@ -258,9 +270,9 @@ export CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR=1
 In `allow` hinzufügen:
 
 ```json
-"Bash(ansible-playbook:*-c local*)",
-"Bash(ansible-playbook:*--connection=local*)",
-"Bash(ansible-playbook:*localhost*)"
+"Bash(ansible-playbook *-c local*)",
+"Bash(ansible-playbook *--connection=local*)",
+"Bash(ansible-playbook *localhost*)"
 ```
 
 ### Molecule vollständig erlauben
@@ -284,3 +296,4 @@ Aus `deny` entfernen:
 - [Claude Code Settings Dokumentation](https://docs.anthropic.com/en/docs/claude-code/settings)
 - Deny hat immer Vorrang vor Allow
 - `Read()` und `Edit()` werden "best-effort" auch auf Bash-Tools angewendet
+- `:*` nur für Prefix-Matching am Ende, sonst Leerzeichen für Wildcards

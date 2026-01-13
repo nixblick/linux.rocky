@@ -1,5 +1,6 @@
 # Claude Code Configuration
 # Rocky Linux Security Hardening Role
+# CLAUDE.md ist das primäre/offizielle Format - die claude.yaml ist eher inoffiziell/experimentell.
 
 project:
   name: "Rocky Linux Security Hardening Role"
